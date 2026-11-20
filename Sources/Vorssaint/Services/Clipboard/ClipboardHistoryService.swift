@@ -652,6 +652,47 @@ final class ClipboardHistoryService: ObservableObject {
         }
     }
 
+    /// Pastes the entry with its formatting stripped, the counterpart of
+    /// Maccy's paste-without-formatting. Only the text reaches the destination
+    /// app; the previous clipboard is put back afterwards, so a later normal
+    /// paste still carries the user's original rich content.
+    ///
+    /// Images and files have nothing to strip, so they take the ordinary paste
+    /// rather than silently doing nothing.
+    func pasteQuickEntryAsPlainText(_ entry: ClipboardHistoryEntry) {
+        guard let plain = entry.plainTextForPaste else {
+            copyQuickEntry(entry)
+            return
+        }
+        let target = pasteTargetApp
+        hideHistoryWindow()
+        pasteTargetApp = nil
+        // No target means the panel opened over Vorssaint itself or an app
+        // without a Dock icon, where a pick is only a copy and stays silent.
+        guard let target, !target.isTerminated else { return }
+        guard ClipboardHistoryPasteTarget.acceptsSyntheticPaste(bundleID: target.bundleIdentifier) else {
+            return
+        }
+        guard AXIsProcessTrusted() else {
+            if promptedForAccessibility {
+                NSSound.beep()
+            } else {
+                promptedForAccessibility = true
+                Permissions.shared.requestAccessibility()
+            }
+            return
+        }
+        touch([entry.id])
+        target.activate(options: [])
+        // Same activation beat the rich paste uses, so the keystroke lands in
+        // the app the panel was opened over and not in Vorssaint.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            if !TransientPaste.shared.paste(plain, didFail: { NSSound.beep() }) {
+                NSSound.beep()
+            }
+        }
+    }
+
     func editImage(_ entry: ClipboardHistoryEntry) {
         guard entry.kind == .image, AppFeature.screenshot.isAvailable,
               let directory = ClipboardImageStore.directory else { return }
