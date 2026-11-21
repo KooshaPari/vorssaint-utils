@@ -30,6 +30,9 @@ struct MetricsTests {
             ("window-policy", {
                 WindowPolicyTests.run(suite)
             }),
+            ("hidden-preferences", {
+                HiddenPreferenceTests.run(suite)
+            }),
             ("pointer-input", {
                 PointerOnDisplayContract.run(suite)
                 PointerInputFeatureTests.run(suite)

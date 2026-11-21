@@ -595,6 +595,7 @@ if (( TEST )); then
         Sources/Vorssaint/Services/WindowPolicy/WindowPolicySupport.swift
         Sources/Vorssaint/Services/WindowPolicy/WindowPolicyAccessibility.swift
         Sources/Vorssaint/Services/WindowPolicy/WindowPolicyService.swift
+        Sources/Vorssaint/Services/HiddenPreferences/HiddenPreferenceCatalog.swift
         Sources/Vorssaint/Services/WindowLayout/WindowStageManagerSupport.swift
         Sources/Vorssaint/Core/WindowStageManagerStrings.swift
         Sources/Vorssaint/Core/WindowEdgeSnapRestoreStrings.swift

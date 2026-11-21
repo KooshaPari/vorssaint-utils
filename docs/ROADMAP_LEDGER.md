@@ -42,11 +42,12 @@ grouping for minimized windows and dock items are now in place and tested.
 
 | App | What Vorssaint already has | Gap |
 | --- | --- | --- |
+| All | Full comparison, with evidence and absence checks, in `docs/PARITY_MATRIX.md` | |
 | Maccy | see section A | A4 to A8 |
 | Background Music | `mixer` per-app volume, `audioPriority`, `micMute`, `musicBlock` | virtual audio device for per-app output routing, if wanted |
-| Rectangle | `windowLayout` snapping and shortcuts, `windowMaximizer`, `spacesOrder` | behaviour-by-behaviour parity plus B1 to B4 |
-| TinkerTool | many live toggles | hidden-preference browser (Finder, Dock, Safari, screenshots, recent items) |
-| Mac Tweaks (`com.macmeup.Mac-Tweaks` 3.1.1) | overlaps TinkerTool | hidden-preference browser, same surface as TinkerTool |
+| Rectangle | `windowLayout` already covers halves, thirds, quarters, sixths, corners, maximize, margin maximize, full screen, centre, next and previous display, restore | almost maximize and smaller/larger nudges, if wanted. B1 to B4 are shipped |
+| TinkerTool | many live toggles | wip: `HiddenPreferenceCatalog` landed with 14 Finder, Dock, screenshot and global keys, plus the `hidden-preferences` suite. Browser and writer next |
+| Mac Tweaks (`com.macmeup.Mac-Tweaks` 3.1.1) | overlaps TinkerTool | same surface as TinkerTool |
 | OnyX | `cleaner`, `uninstaller`, `homebrew`, `killProcess`, `portManager` | maintenance suite: cache rebuild, LaunchServices rebuild, Spotlight reindex, verify |
 | Deskflow | nothing | input sharing. Decision: optional bundled sidecar, driven by Vorssaint, not reimplemented |
 | ProToys (protoys.app) | notch suite, colorPicker, screenOCR, shelf, mixer, portManager, monitor suite, keepAwake, notchTimer, mouse tools, mediaTools | screen ruler, ZoomIt-style zoom and annotate, Always On Top, Workspaces, Crop And Lock, bulk PowerRename with regex, theme switcher, file convert plus link sharing |
