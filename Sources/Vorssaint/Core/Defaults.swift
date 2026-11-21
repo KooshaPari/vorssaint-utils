@@ -594,6 +594,7 @@ enum DefaultsKey {
     static let clipboardHistoryFilterSensitiveText = "clipboardHistoryFilterSensitiveText"
     static let clipboardHistoryIncludeImagesFiles = "clipboardHistoryIncludeImagesFiles" // capture copied images and files too
     static let clipboardHistoryIgnoredApps = "clipboardHistoryIgnoredApps" // apps whose copies are never saved
+    static let clipboardHistoryIgnoredPasteboardTypes = "clipboardHistoryIgnoredPasteboardTypes" // extra pasteboard types that are never saved
     static let clipboardHistoryQuickPreview = "clipboardHistoryQuickPreview"
     static let clipboardHistoryShowSourceAppIcons = "clipboardHistoryShowSourceAppIcons" // source app icons beside list entries
     static let clipboardHistoryLayout = "clipboardHistoryLayout" // cards | list, how the history window shows entries
@@ -1841,6 +1842,7 @@ enum Defaults {
         DefaultsKey.clipboardHistoryFilterSensitiveText: false,
         DefaultsKey.clipboardHistoryIncludeImagesFiles: true,
         DefaultsKey.clipboardHistoryIgnoredApps: [String](),
+        DefaultsKey.clipboardHistoryIgnoredPasteboardTypes: [String](),
         DefaultsKey.windowLayoutIgnoredApps: [String](),
         DefaultsKey.clipboardHistoryQuickPreview: false,
         DefaultsKey.clipboardHistoryShowSourceAppIcons: false,
@@ -2732,6 +2734,25 @@ enum Defaults {
             guard !bundleID.isEmpty, !seen.contains(bundleID) else { continue }
             seen.insert(bundleID)
             result.append(bundleID)
+        }
+        return result
+    }
+
+    /// Pasteboard type identifiers. A type is a dot-separated name or an Apple
+    /// UTI, so anything carrying a space, slash or other punctuation can never
+    /// match a real one and is dropped instead of stored and silently ignored.
+    static func sanitizedPasteboardTypeList(_ types: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for raw in types {
+            let type = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            let allowed = type.allSatisfy { character in
+                character.isLetter || character.isNumber
+                    || character == "." || character == "-" || character == "_" || character == "$"
+            }
+            guard !type.isEmpty, type.count <= 200, allowed, !seen.contains(type) else { continue }
+            seen.insert(type)
+            result.append(type)
         }
         return result
     }

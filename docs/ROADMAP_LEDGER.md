@@ -17,7 +17,7 @@ UI marks anything changed in the current build with a green `KNU` tag.
 | A1 | Paste a history entry without formatting (⌥-click, ⌥⇧↩, context menu, previous clipboard restored) | shipped |
 | A2 | Pause capture from the panel, persisted, re-baselines on resume | shipped |
 | A3 | Per-item shortcuts for pinned entries | shipped already (⌘1..⌘9 over pinned-first order) |
-| A4 | User-editable pasteboard-type ignore list (1Password, KeeWeb, InDesign, remote clipboard) | queued |
+| A4 | User-editable pasteboard-type ignore list (1Password, KeeWeb, InDesign, remote clipboard) | shipped |
 | A5 | Ignore only the next copy (one-shot skip) | queued |
 | A6 | Clear all including pinned, with its own confirmation | queued |
 | A7 | Clipboard check interval preference | queued |

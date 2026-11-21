@@ -954,6 +954,9 @@ final class ClipboardHistoryService: ObservableObject {
         let types = (pasteboard.types ?? []).map(\.rawValue)
         if ClipboardHistorySensitiveText.isConcealed(types) { return nil }
         if ClipboardHistorySensitiveText.isTransient(types) { return .transient }
+        // Types the user listed as never worth keeping: a password manager's
+        // own mark, or Universal Clipboard's, which Maccy exposes the same way.
+        if ClipboardIgnoredPasteboardTypes.shared.matches(types) { return nil }
         // Files first: a Finder copy also carries name strings, and a browser
         // image copy also carries URL text, so richer content wins over its
         // own textual fallbacks.

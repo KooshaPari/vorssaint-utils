@@ -77,6 +77,8 @@ struct ClipboardSettings: View {
                         .foregroundStyle(.secondary)
                     ClipboardIgnoredAppsList()
                         .disabled(!enabled)
+                    ClipboardIgnoredTypesList()
+                        .disabled(!enabled)
                     Picker(text.limit, selection: $limit) {
                         ForEach(Defaults.allowedClipboardHistoryLimits, id: \.self) { value in
                             Text(value == 0 ? text.limitUnlimited : "\(value)").tag(value)
