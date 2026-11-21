@@ -92,3 +92,17 @@ implementation, bundle it.
   `build/generated-tests/*.swift`; a sliced function cannot use instance
   properties declared elsewhere, so such paths read preferences directly.
 - C: on the Windows host is below the 500 GB threshold, so new work lives on E:.
+
+## G. Later candidates from operator dumps (2026-11-21)
+
+| Candidate | Note | Status |
+| --- | --- | --- |
+| Flux (f.lux) | display colour temperature with a schedule. Vorssaint has brightness and extra brightness only | queued |
+| OpenRGB | RGB lighting control. macOS coverage is partial and hardware-specific, so treat as an optional sidecar rather than a native rewrite | needs info |
+| SMB and compute-mesh management | mount and manage SMB shares, and a mesh view over Tailscale peers and SSH hosts, beside the existing `connectedDevices` and `portManager` | queued |
+| Kcode Notifications (`~/Applications`) | the companion app named in D4 and D5; the natural surface for instinct and Hermes events | needs info |
+| Parsec, UTM, OBS, balenaEtcher, qBittorrent, Steam, Blender, Xcode | installed but out of scope unless asked. OBS overlaps `screenRecorder` only | parked |
+| RemoveMacAI, oMLX, Slipstream, rio, Ghostty | installed, purpose unverified | needs info |
+
+Rule applied to every row: a bundle or sidecar wins wherever hand-rolling would be
+inferior; native implementation only where the sidecar would be worse.
