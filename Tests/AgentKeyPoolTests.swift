@@ -54,5 +54,29 @@ enum AgentKeyPoolTests {
                      "rows show the label and the masked tail")
         suite.expect(labels.allSatisfy { $0.contains("••••") },
                      "every row carries the mask, so a key is never shown whole")
+
+        let store = InMemoryAgentSecretStore()
+        let registry = AgentKeyRegistry(store: store)
+        suite.expect(registry.addKey(provider: "opencode-go", label: "short", secret: "abc") == nil,
+                     "a secret too short to be a provider key is refused")
+
+        guard let added = registry.addKey(provider: "opencode-go",
+                                          label: "work",
+                                          secret: "sk-test-9999") else {
+            suite.expect(false, "a real secret is accepted")
+            return
+        }
+        suite.expect(added.tail == "9999", "the reference keeps only the tail")
+        suite.expect(registry.secret(for: added.id) == "sk-test-9999",
+                     "the secret reaches the store")
+        suite.expect(registry.pool.maskedLabels == ["work ••••9999"],
+                     "the pool shows a masked row, never the secret")
+        suite.expect(registry.nextKey?.id == added.id, "the first key is the next one used")
+
+        registry.removeKey(added.id)
+        suite.expect(registry.secret(for: added.id) == nil,
+                     "removing a key removes its secret")
+        suite.expect(registry.isEmpty, "removing the only key empties the registry")
+        suite.expect(registry.nextKey == nil, "an empty registry has no next key")
     }
 }
