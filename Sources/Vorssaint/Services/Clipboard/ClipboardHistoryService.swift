@@ -114,6 +114,10 @@ final class ClipboardHistoryService: ObservableObject {
     /// was copied during the pause is not recorded late.
     @Published private(set) var isPaused = UserDefaults.standard.bool(
         forKey: DefaultsKey.clipboardHistoryPaused)
+    /// Set by the one-shot skip. Deliberately in memory and not a preference:
+    /// it lives for a single copy, and the capture path it affects is compiled
+    /// into the self-test build, where only reads are available.
+    private var skipNextPending = false
     /// Writes coalesce per mutation cycle; the JSON encode and the disk write
     /// stay off the main thread (a full history of long texts is real work),
     /// serialized so blobs land in mutation order.
@@ -159,11 +163,9 @@ final class ClipboardHistoryService: ObservableObject {
     }
 
     /// Leaves the next copy out of the history and clears the flag on the way
-    /// out, the way Maccy's one-shot ignore works. Read directly from the
-    /// preference in the capture path, which the self-test build slices out of
-    /// this file on its own.
+    /// out, the way Maccy's one-shot ignore works.
     func skipNextCopy() {
-        UserDefaults.standard.set(true, forKey: DefaultsKey.clipboardHistorySkipNext)
+        skipNextPending = true
     }
 
     /// Skips capturing pasteboard changes up to the given change count. Quick
@@ -782,7 +784,7 @@ final class ClipboardHistoryService: ObservableObject {
             return
         }
         let timer = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in
-            self?.captureIfChanged()
+            self?.tick()
         }
         timer.tolerance = 0.25
         RunLoop.main.add(timer, forMode: .common)
@@ -821,6 +823,25 @@ final class ClipboardHistoryService: ObservableObject {
         case files([String])
         case image((data: Data, width: Int, height: Int))
         case text(String)
+    }
+
+    /// One poll of the capture loop. The one-shot skip is consumed here rather
+    /// than inside the capture path, because that path is compiled into the
+    /// self-test build where only preference reads exist. Adopting the current
+    /// change count moves the baseline past the copy the user asked to skip, so
+    /// it is never recorded and the next copy is.
+    private func tick() {
+        guard isRunning, !isPaused else { return }
+        guard skipNextPending else {
+            captureIfChanged()
+            return
+        }
+        skipNextPending = false
+        latestPasteboardEntry = nil
+        GeneralPasteboardAccess.shared.async({ NSPasteboard.general.changeCount }) { [weak self] count in
+            guard let self else { return }
+            self.lastChangeCount = max(self.lastChangeCount, count)
+        }
     }
 
     private func captureIfChanged(historyPanelClosing: Bool = false) {
@@ -965,13 +986,6 @@ final class ClipboardHistoryService: ObservableObject {
         // Types the user listed as never worth keeping: a password manager's
         // own mark, or Universal Clipboard's, which Maccy exposes the same way.
         if ClipboardIgnoredPasteboardTypes.shared.matches(types) { return nil }
-        // A one-shot skip consumes the next real read and then clears itself.
-        // It sits here, beside the other reasons a copy is not kept, so the
-        // capture closure downstream never has to know about it.
-        if UserDefaults.standard.bool(forKey: DefaultsKey.clipboardHistorySkipNext) {
-            UserDefaults.standard.set(false, forKey: DefaultsKey.clipboardHistorySkipNext)
-            return nil
-        }
         // Files first: a Finder copy also carries name strings, and a browser
         // image copy also carries URL text, so richer content wins over its
         // own textual fallbacks.
