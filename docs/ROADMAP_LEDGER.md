@@ -19,8 +19,8 @@ UI marks anything changed in the current build with a green `KNU` tag.
 | A3 | Per-item shortcuts for pinned entries | shipped already (⌘1..⌘9 over pinned-first order) |
 | A4 | User-editable pasteboard-type ignore list (1Password, KeeWeb, InDesign, remote clipboard) | shipped |
 | A5 | Ignore only the next copy (one-shot skip) | shipped |
-| A6 | Clear all including pinned, with its own confirmation | queued |
-| A7 | Clipboard check interval preference | queued |
+| A6 | Clear all including pinned, with its own confirmation | shipped |
+| A7 | Clipboard check interval preference | shipped |
 | A8 | Universal Clipboard skip as a first-class switch | shipped |
 
 Reference: `docs/CLIPBOARD_MACCY_PARITY.md`.
