@@ -66,6 +66,9 @@ struct PanelClipboardView: View {
         HStack(spacing: 8) {
             Label(text.title, systemImage: "doc.on.clipboard")
                 .font(.system(size: 12, weight: .semibold))
+            if NewFeatureBadges.isNew(.clipboardHistory) {
+                KnuTag()
+            }
             Spacer()
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
