@@ -1,0 +1,94 @@
+# Roadmap ledger
+
+Every idea the operator drops goes here, with status, so nothing is lost between
+sessions. Newest intents join the list; nothing is deleted, only marked.
+
+Status: `shipped` (committed and verified on the Mac), `wip`, `queued`,
+`needs info`, `parked`.
+
+Build under test: `/Applications/Vorssaint (Developer).app`, branch
+`dev/maccy-clipboard-parity`, PR #1 on `KooshaPari/vorssaint-utils`.
+UI marks anything changed in the current build with a green `KNU` tag.
+
+## A. Clipboard, superseding Maccy
+
+| # | Item | Status |
+| --- | --- | --- |
+| A1 | Paste a history entry without formatting (⌥-click, ⌥⇧↩, context menu, previous clipboard restored) | shipped |
+| A2 | Pause capture from the panel, persisted, re-baselines on resume | shipped |
+| A3 | Per-item shortcuts for pinned entries | shipped already (⌘1..⌘9 over pinned-first order) |
+| A4 | User-editable pasteboard-type ignore list (1Password, KeeWeb, InDesign, remote clipboard) | queued |
+| A5 | Ignore only the next copy (one-shot skip) | queued |
+| A6 | Clear all including pinned, with its own confirmation | queued |
+| A7 | Clipboard check interval preference | queued |
+| A8 | Universal Clipboard skip as a first-class switch | queued |
+
+Reference: `docs/CLIPBOARD_MACCY_PARITY.md`.
+
+## B. Window policy engine (operator intent, 2026-11-20)
+
+| # | Item | Status |
+| --- | --- | --- |
+| B1 | Smart auto tiling of floating windows, definable layouts | queued |
+| B2 | Per-desktop window cap; overflow logic: new desktop, minimize, or other policy | queued |
+| B3 | Smart grouping of windows minimized but not pinned | queued |
+| B4 | Same grouping for dock items where Vorssaint does not already provide it | queued |
+
+Today the only tiling is edge snapping inside `windowLayout`. No auto-tiler, no
+declutter policy, no dock grouping. B1 to B4 are one subsystem, shipped together.
+
+## C. Superset targets for other tools
+
+| App | What Vorssaint already has | Gap |
+| --- | --- | --- |
+| Maccy | see section A | A4 to A8 |
+| Background Music | `mixer` per-app volume, `audioPriority`, `micMute`, `musicBlock` | virtual audio device for per-app output routing, if wanted |
+| Rectangle | `windowLayout` snapping and shortcuts, `windowMaximizer`, `spacesOrder` | behaviour-by-behaviour parity plus B1 to B4 |
+| TinkerTool | many live toggles | hidden-preference browser (Finder, Dock, Safari, screenshots, recent items) |
+| Mac Tweaks (`com.macmeup.Mac-Tweaks` 3.1.1) | overlaps TinkerTool | hidden-preference browser, same surface as TinkerTool |
+| OnyX | `cleaner`, `uninstaller`, `homebrew`, `killProcess`, `portManager` | maintenance suite: cache rebuild, LaunchServices rebuild, Spotlight reindex, verify |
+| Deskflow | nothing | input sharing. Decision: optional bundled sidecar, driven by Vorssaint, not reimplemented |
+| ProToys (protoys.app) | notch suite, colorPicker, screenOCR, shelf, mixer, portManager, monitor suite, keepAwake, notchTimer, mouse tools, mediaTools | screen ruler, ZoomIt-style zoom and annotate, Always On Top, Workspaces, Crop And Lock, bulk PowerRename with regex, theme switcher, file convert plus link sharing |
+| Amphetamine | `keepAwake` | parity check only |
+| DaisyDisk | `cleaner` | disk map visualisation |
+| Parsec / UTM / OBS | none | not in scope unless the operator says so |
+
+General rule from the operator: where a sidecar or bundle beats a hand-rolled
+implementation, bundle it.
+
+## D. AI agents section
+
+| # | Item | Status |
+| --- | --- | --- |
+| D1 | jcode harness reader so jcode sessions and usage appear in the notch agents strip | queued |
+| D2 | herdr session and pane state through the documented contract (`HERDR_*`, `pane.report_agent_session`) | queued |
+| D3 | Multiple OpenCode Go API keys, per-key usage, rotation, secret-safe provisioning | queued |
+| D4 | Instinct and/or Hermes and other agent integrations for the companion | needs info |
+| D5 | Subscription or API key for the companion to use | needs info |
+| D6 | "Vorssaint dots" | needs info: exact meaning not yet known |
+
+## E. Network
+
+| # | Item | Status |
+| --- | --- | --- |
+| E1 | Tailscale integration: bind agent and harness services to the tailnet, verify peer identity | queued |
+| E2 | Mullvad integration: per-provider egress policy through its SOCKS5 or CLI, refuse rather than fall back | queued |
+
+## F. Packaging and security
+
+| # | Item | Status |
+| --- | --- | --- |
+| F1 | Signed, notarized `.app` and `.dmg`, stapled | blocked on notary credentials (`NOTARY_API_KEY_P8`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID`) or a run in the Mac's GUI session |
+| F2 | Homebrew cask in the tap | queued, follows F1 |
+| F3 | Apple findings P85-1..P85-5 from `pr-review-plan-20261120.md` | needs info: document not found on this host |
+
+## Operator facts recorded
+
+- Apple Developer account is paid; Developer ID Application (GCT2BN8WLL) is
+  installed on the Mac. Headless builds cannot use it because the login keychain
+  is locked over SSH, so dev builds pass `VORSSAINT_SKIP_DEVELOPER_ID=1`.
+- Mac: `kooshas-laptop`, 100.112.14.98, macOS 27.3, Xcode 26.0, Swift 6.2.
+- The self-test build slices individual functions into
+  `build/generated-tests/*.swift`; a sliced function cannot use instance
+  properties declared elsewhere, so such paths read preferences directly.
+- C: on the Windows host is below the 500 GB threshold, so new work lives on E:.
