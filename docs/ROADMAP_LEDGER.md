@@ -31,7 +31,7 @@ Reference: `docs/CLIPBOARD_MACCY_PARITY.md`.
 | --- | --- | --- |
 | B1 | Smart auto tiling of floating windows, definable layouts | shipped: pure policy, eligibility filter, Accessibility layer, opt-in setting with Tile now |
 | B2 | Per-desktop window cap; overflow logic: new desktop, minimize, or other policy | shipped for limit plus leave/minimize; new desktop is not offered because Accessibility has no supported call for it |
-| B3 | Smart grouping of windows minimized but not pinned | queued |
+| B3 | Smart grouping of windows minimized but not pinned | wip: `MinimizedWindowGrouping` model plus tests landed, the surface that shows the groups is next |
 | B4 | Same grouping for dock items where Vorssaint does not already provide it | queued |
 
 Today the only tiling is edge snapping inside `windowLayout`. No auto-tiler, no

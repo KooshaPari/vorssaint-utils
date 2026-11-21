@@ -50,6 +50,14 @@ whichever is smaller. A cap of zero means the slots are the only bound.
 - Grouping of minimized windows does not move files or apps; it is a view, and it
   is undone by ungrouping.
 
+## Grouping minimized windows
+
+`MinimizedWindowGrouping` collapses minimized windows into one entry per app,
+leaving pinned windows out and keeping the order apps first appear. It is a pure
+model with tests, deliberately with no Dock or Space manipulation behind it: the
+group is a view, so showing it can never strand a window somewhere unreachable.
+The surface that renders those groups is the next slice.
+
 ## Tests
 
 `Tests/WindowPolicyTests.swift`, registered as the `window-policy` suite, covers

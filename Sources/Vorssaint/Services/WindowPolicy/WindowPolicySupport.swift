@@ -37,6 +37,41 @@ enum WindowPolicyOverflow: String, CaseIterable {
     case minimize
 }
 
+/// One minimized window as the grouping model sees it.
+struct MinimizedWindowInfo: Equatable {
+    let id: Int
+    let appBundleID: String
+    let isPinned: Bool
+}
+
+/// Minimized windows collapsed by app, pinned ones left out. The point is a
+/// short list a person can scan, not a second Dock: one row per app, with the
+/// windows counted, in the order the apps first appear.
+struct MinimizedWindowGroup: Equatable {
+    let appBundleID: String
+    let windowIDs: [Int]
+
+    var count: Int { windowIDs.count }
+}
+
+enum MinimizedWindowGrouping {
+    static func groups(_ windows: [MinimizedWindowInfo]) -> [MinimizedWindowGroup] {
+        var order: [String] = []
+        var byApp: [String: [Int]] = [:]
+        for window in windows where !window.isPinned {
+            if byApp[window.appBundleID] == nil {
+                order.append(window.appBundleID)
+                byApp[window.appBundleID] = []
+            }
+            byApp[window.appBundleID]?.append(window.id)
+        }
+        return order.compactMap { bundleID in
+            guard let ids = byApp[bundleID], !ids.isEmpty else { return nil }
+            return MinimizedWindowGroup(appBundleID: bundleID, windowIDs: ids)
+        }
+    }
+}
+
 /// What the policy knows about one window before deciding anything. A value
 /// type on purpose: the Accessibility controller fills it from AX attributes,
 /// and the filter below is then testable without a window server.

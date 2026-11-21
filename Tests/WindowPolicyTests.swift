@@ -84,6 +84,28 @@ enum WindowPolicyTests {
                      "only ordinary movable resizable windows in the normal layer are eligible")
         suite.expect(WindowPolicyEligibility.eligible([]).isEmpty,
                      "no windows means no eligible windows")
+
+        func minimized(_ id: Int, _ app: String, pinned: Bool = false) -> MinimizedWindowInfo {
+            MinimizedWindowInfo(id: id, appBundleID: app, isPinned: pinned)
+        }
+
+        let grouped = MinimizedWindowGrouping.groups([
+            minimized(1, "com.apple.Safari"),
+            minimized(2, "com.apple.Preview"),
+            minimized(3, "com.apple.Safari"),
+            minimized(4, "com.apple.Safari", pinned: true),
+            minimized(5, "com.apple.Preview"),
+        ])
+        suite.expect(grouped.map(\.appBundleID) == ["com.apple.Safari", "com.apple.Preview"],
+                     "groups follow the order apps first appear")
+        suite.expect(grouped.first?.windowIDs == [1, 3],
+                     "each group keeps its windows in order")
+        suite.expect(grouped.first?.count == 2 && grouped.last?.count == 2,
+                     "pinned windows are left out of the counts")
+        suite.expect(MinimizedWindowGrouping.groups([minimized(1, "a", pinned: true)]).isEmpty,
+                     "only pinned windows means nothing to group")
+        suite.expect(MinimizedWindowGrouping.groups([]).isEmpty,
+                     "no minimized windows means no groups")
     }
 
     private static func close(_ first: CGFloat, _ second: CGFloat) -> Bool {
