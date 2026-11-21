@@ -14,6 +14,8 @@ struct ClipboardSettings: View {
     @AppStorage(DefaultsKey.pastePlainEnabled) private var pastePlainEnabled = false
     @AppStorage(DefaultsKey.clipboardHistoryEnabled) private var enabled = false
     @AppStorage(DefaultsKey.clipboardHistoryLimit) private var limit = 50
+    @AppStorage(DefaultsKey.clipboardHistoryCheckInterval)
+    private var checkInterval = Defaults.defaultClipboardCheckInterval
     @AppStorage(DefaultsKey.clipboardHistoryRetentionDays) private var retentionDays = 0
     @AppStorage(DefaultsKey.clipboardHistoryFilterSensitiveText) private var skipSensitive = false
     @AppStorage(DefaultsKey.clipboardHistoryIncludeImagesFiles) private var includeImagesFiles = true
@@ -42,6 +44,10 @@ struct ClipboardSettings: View {
 
     private var skipText: ClipboardSkipStrings {
         FeatureStrings.clipboardSkip(l10n.language)
+    }
+
+    private var skipExtras: ClipboardExtrasStrings {
+        FeatureStrings.clipboardExtras(l10n.language)
     }
 
     /// Universal Clipboard is one entry in the ignored-types list, so the switch
@@ -120,6 +126,18 @@ struct ClipboardSettings: View {
                     }
                     .disabled(!enabled)
                     Text(retentionText.caption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker(skipExtras.checkInterval, selection: $checkInterval) {
+                        ForEach(Defaults.allowedClipboardCheckIntervals, id: \.self) { value in
+                            Text(String(format: "%g s", value)).tag(value)
+                        }
+                    }
+                    .disabled(!enabled)
+                    .onChange(of: checkInterval) { _, _ in
+                        history.applyCaptureInterval()
+                    }
+                    Text(skipExtras.checkIntervalCaption)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

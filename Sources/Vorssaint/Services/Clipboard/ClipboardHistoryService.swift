@@ -425,6 +425,16 @@ final class ClipboardHistoryService: ObservableObject {
         save()
     }
 
+    /// Empties the history completely, pinned entries included. Kept apart from
+    /// `clearRecent` so the confirmation can say exactly what is about to go.
+    func clearAllIncludingPinned() {
+        guard !entries.isEmpty else { return }
+        entries.removeAll()
+        latestPasteboardEntry = nil
+        pruneQuickBatchSelection()
+        save()
+    }
+
     func canMove(_ entry: ClipboardHistoryEntry, _ direction: ClipboardHistoryMoveDirection) -> Bool {
         moveDestination(for: entry, direction) != nil
     }
@@ -783,12 +793,7 @@ final class ClipboardHistoryService: ObservableObject {
             isRunning = true
             return
         }
-        let timer = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in
-            self?.tick()
-        }
-        timer.tolerance = 0.25
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
+        installCaptureTimer()
         let retentionTimer = Timer(timeInterval: 3_600, repeats: true) { [weak self] _ in
             self?.trimToLimit()
         }
@@ -815,6 +820,27 @@ final class ClipboardHistoryService: ObservableObject {
         // baseline check actually answering, instead of going blank right
         // away like the rest of the feature does while stopped.
         latestPasteboardEntry = nil
+    }
+
+    /// Builds the poll timer from the interval preference. Called when capture
+    /// starts and again whenever the preference changes.
+    private func installCaptureTimer() {
+        let interval = Defaults.sanitizedClipboardCheckInterval(
+            UserDefaults.standard.double(forKey: DefaultsKey.clipboardHistoryCheckInterval))
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            self?.tick()
+        }
+        timer.tolerance = min(0.25, interval / 2)
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    /// Rebuilds the poll timer after the interval preference changes. The
+    /// retention timer is untouched.
+    func applyCaptureInterval() {
+        guard isRunning else { return }
+        timer?.invalidate()
+        installCaptureTimer()
     }
 
     /// What the background pasteboard read hands back to the main thread.

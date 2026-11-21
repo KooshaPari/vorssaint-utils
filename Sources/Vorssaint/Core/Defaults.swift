@@ -589,6 +589,7 @@ enum DefaultsKey {
     static let clipboardHistoryPaused = "clipboardHistoryPaused" // paused by the user: copies keep happening, nothing is recorded
     static let clipboardHistoryEntries = "clipboardHistoryEntries"
     static let clipboardHistoryLimit = "clipboardHistoryLimit"
+    static let clipboardHistoryCheckInterval = "clipboardHistoryCheckInterval" // seconds between pasteboard polls
     static let clipboardHistoryRetentionDays = "clipboardHistoryRetentionDays" // 0 keeps items until the limit drops them
     // A separate opt-in from the old, enabled-by-default text heuristic.
     static let clipboardHistoryFilterSensitiveText = "clipboardHistoryFilterSensitiveText"
@@ -1237,6 +1238,8 @@ enum Defaults {
     static let allowedMonitorMemoryMetrics = ["used", "app"]
     static let allowedPreviewSizes = ["small", "normal", "large", "xlarge"]
     static let allowedClipboardHistoryLimits = [20, 50, 100, 250, 500, 1_000, 10_000, 0]
+    static let allowedClipboardCheckIntervals: [Double] = [0.25, 0.5, 0.8, 1.5, 3]
+    static let defaultClipboardCheckInterval: Double = 0.8
     static let allowedClipboardHistoryRetentionDays = [1, 7, 30, 90, 365, 0]
     static let allowedClipboardAutoClearDelayRange = 5...3_600
     static let defaultClipboardAutoClearDelay = 20
@@ -1838,6 +1841,7 @@ enum Defaults {
         DefaultsKey.clipboardHistoryEnabled: false,
         DefaultsKey.clipboardHistoryPaused: false,
         DefaultsKey.clipboardHistoryLimit: 50,
+        DefaultsKey.clipboardHistoryCheckInterval: defaultClipboardCheckInterval,
         DefaultsKey.clipboardHistoryRetentionDays: 0,
         DefaultsKey.clipboardHistoryFilterSensitiveText: false,
         DefaultsKey.clipboardHistoryIncludeImagesFiles: true,
@@ -2706,6 +2710,10 @@ enum Defaults {
 
     static func sanitizedClipboardHistoryLimit(_ value: Int) -> Int {
         allowedClipboardHistoryLimits.contains(value) ? value : 50
+    }
+
+    static func sanitizedClipboardCheckInterval(_ value: Double) -> Double {
+        allowedClipboardCheckIntervals.contains(value) ? value : defaultClipboardCheckInterval
     }
 
     static func sanitizedClipboardHistoryRetentionDays(_ value: Int) -> Int {

@@ -15,6 +15,7 @@ struct PanelClipboardView: View {
     /// it still carries the tick.
     @State private var copyCount = 0
     @State private var clearingIDs: [UUID: Date]?
+    @State private var confirmingClearAll = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.notchPresentation) private var inNotch
 
@@ -26,6 +27,10 @@ struct PanelClipboardView: View {
 
     private var skipText: ClipboardSkipStrings {
         FeatureStrings.clipboardSkip(l10n.language)
+    }
+
+    private var extras: ClipboardExtrasStrings {
+        FeatureStrings.clipboardExtras(l10n.language)
     }
 
     /// The alert would hang from the island as a sheet; there it asks on its own.
@@ -120,6 +125,13 @@ struct PanelClipboardView: View {
                 .help(text.clearRecent)
                 .disabled(history.recentEntries.isEmpty)
                 .modifier(ClipboardClearRecentConfirmation(entryIDs: $clearingIDs))
+                .contextMenu {
+                    Button(role: .destructive) {
+                        confirmingClearAll = true
+                    } label: {
+                        Text(extras.clearAll)
+                    }
+                }
                 Button {
                     history.setPaused(!history.isPaused)
                 } label: {
@@ -155,6 +167,14 @@ struct PanelClipboardView: View {
             }
         }
         .panelCard()
+        .alert(extras.clearAll, isPresented: $confirmingClearAll) {
+            Button(extras.clearAll, role: .destructive) {
+                history.clearAllIncludingPinned()
+            }
+            Button(l10n.s.uninstallerCancel, role: .cancel) {}
+        } message: {
+            Text(extras.clearAllConfirm)
+        }
     }
 
     @ViewBuilder
