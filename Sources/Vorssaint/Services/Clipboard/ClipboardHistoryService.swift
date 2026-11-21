@@ -108,6 +108,12 @@ final class ClipboardHistoryService: ObservableObject {
     private var registeredShortcut: GlobalShortcut?
     private var pasteTargetApp: NSRunningApplication?
     private var promptedForAccessibility = false
+    /// True while the user has paused capture. Copies keep landing on the
+    /// pasteboard as usual; the history simply records nothing until capture
+    /// resumes, and the first check after resuming re-baselines so whatever
+    /// was copied during the pause is not recorded late.
+    @Published private(set) var isPaused = UserDefaults.standard.bool(
+        forKey: DefaultsKey.clipboardHistoryPaused)
     /// Writes coalesce per mutation cycle; the JSON encode and the disk write
     /// stay off the main thread (a full history of long texts is real work),
     /// serialized so blobs land in mutation order.
@@ -132,6 +138,23 @@ final class ClipboardHistoryService: ObservableObject {
         } else {
             stop()
             unregisterHotkey()
+        }
+    }
+
+    /// Pauses or resumes recording. The preference is persisted so the state
+    /// survives a relaunch, the way a deliberate "do not record this" does in
+    /// Maccy.
+    func setPaused(_ paused: Bool) {
+        guard isPaused != paused else { return }
+        isPaused = paused
+        UserDefaults.standard.set(paused, forKey: DefaultsKey.clipboardHistoryPaused)
+        guard isRunning else { return }
+        if paused {
+            latestPasteboardEntry = nil
+            captureState.invalidate()
+        } else {
+            captureState.restart()
+            captureIfChanged()
         }
     }
 
@@ -781,7 +804,7 @@ final class ClipboardHistoryService: ObservableObject {
     }
 
     private func captureIfChanged(historyPanelClosing: Bool = false) {
-        guard isRunning, let generation = captureState.begin() else { return }
+        guard isRunning, !isPaused, let generation = captureState.begin() else { return }
         // On start (including stop/start during a blocked read), establish a
         // fresh baseline before capturing. Old completions cannot consume it.
         let baseline = captureState.needsBaseline

@@ -114,6 +114,17 @@ struct PanelClipboardView: View {
                 .disabled(history.recentEntries.isEmpty)
                 .modifier(ClipboardClearRecentConfirmation(entryIDs: $clearingIDs))
                 Button {
+                    history.setPaused(!history.isPaused)
+                } label: {
+                    Image(systemName: history.isPaused ? "play.circle" : "pause.circle")
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 22)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .help(l10n.s.actionPause)
+                .disabled(!enabled)
+                Button {
                     history.showHistoryWindow()
                 } label: {
                     Image(systemName: "arrow.up.forward.app")
