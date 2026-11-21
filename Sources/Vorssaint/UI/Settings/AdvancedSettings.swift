@@ -111,6 +111,10 @@ struct AdvancedSettings: View {
                 }
                 .disabled(working)
             }
+
+            Section {
+                HiddenPreferencesBrowser()
+            }
         }
         .formStyle(.grouped)
         .alert(l10n.s.advancedClearConfirmTitle, isPresented: $showClearConfirm) {
