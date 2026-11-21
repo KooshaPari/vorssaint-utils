@@ -176,6 +176,12 @@ enum AgentLogParser {
         CopilotReader().parse(line, state: &state, now: now)
     }
 
+    // MARK: jcode
+
+    static func parseJCode(_ line: Data, state: inout AgentLogState, now: Date) -> [AgentLogEntry] {
+        JCodeReader().parse(line, state: &state, now: now)
+    }
+
     static func copilotEvent(_ type: String) -> Bool {
         ["user.message", "assistant.turn_start", "assistant.message", "assistant.turn_end",
          "session.start", "session.context_changed", "session.model_change", "session.shutdown", "abort"].contains(type)
