@@ -32,10 +32,10 @@ windows. The only "tiling" in the code is edge snapping.
 
 The policy reports overflow as indexes, not actions, so the caller decides:
 
-- **Minimize**: the cheapest and reversible.
-- **New desktop**: moves the window to the next Space and follows it, which is
-  closest to how a person makes room today.
-- **Leave in place**: useful while trying a layout out.
+- **Leave in place**: the default, and what makes a trial run safe.
+- **Minimize**: the cheapest reversible action, offered as a picker option.
+- **New desktop**: not offered. Accessibility has no supported call that moves a
+  window to another Space, and the private route is not worth the fragility.
 
 Overflow is only reported when the windows exceed either the slots or the cap,
 whichever is smaller. A cap of zero means the slots are the only bound.

@@ -38,6 +38,9 @@ struct WindowLayoutSettings: View {
     @AppStorage(DefaultsKey.windowPolicyEnabled) private var policyEnabled = false
     @AppStorage(DefaultsKey.windowPolicyLayout)
     private var policyLayout = WindowTileLayout.quarters.rawValue
+    @AppStorage(DefaultsKey.windowPolicyLimit) private var policyLimit = 0
+    @AppStorage(DefaultsKey.windowPolicyOverflow)
+    private var policyOverflow = WindowPolicyOverflow.leave.rawValue
 
     private var text: WindowLayoutFeatureStrings {
         FeatureStrings.windowLayout(l10n.language)
@@ -67,6 +70,13 @@ struct WindowLayoutSettings: View {
                             ForEach(WindowTileLayout.allCases, id: \.self) { layout in
                                 Text(layout.rawValue.capitalized).tag(layout.rawValue)
                             }
+                        }
+                        Stepper(value: $policyLimit, in: 0...8) {
+                            Text("\(policyText.limit): \(policyLimit)")
+                        }
+                        Picker(policyText.overflowBehavior, selection: $policyOverflow) {
+                            Text(policyText.leaveInPlace).tag(WindowPolicyOverflow.leave.rawValue)
+                            Text(l10n.s.menuMinimize).tag(WindowPolicyOverflow.minimize.rawValue)
                         }
                         Button(policyText.tileNow) { policy.tileNow() }
                         Text(policyText.caption)

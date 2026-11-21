@@ -58,6 +58,7 @@ enum WindowPolicyAccessibility {
     @discardableResult
     static func tileFrontmostApp(layout: WindowTileLayout,
                                  limit: Int = 0,
+                                 overflow: WindowPolicyOverflow = .leave,
                                  gap: CGFloat = 0) -> Int {
         guard AXIsProcessTrusted(),
               let app = NSWorkspace.shared.frontmostApplication else { return 0 }
@@ -73,7 +74,22 @@ enum WindowPolicyAccessibility {
         for (target, frame) in zip(targets, plan.frames) {
             if setFrame(frame, on: target.element) { applied += 1 }
         }
+        if overflow == .minimize {
+            for index in plan.overflow where targets.indices.contains(index) {
+                setMinimized(true, on: targets[index].element)
+            }
+        }
         return applied
+    }
+
+    /// Minimizing needs no frame arithmetic, so a window past the cap simply
+    /// goes to the dock and comes back the way macOS normally restores it.
+    @discardableResult
+    static func setMinimized(_ minimized: Bool, on element: AXUIElement) -> Bool {
+        let value: CFBoolean = minimized ? kCFBooleanTrue : kCFBooleanFalse
+        return AXUIElementSetAttributeValue(element,
+                                           kAXMinimizedAttribute as CFString,
+                                           value) == .success
     }
 
     static func setFrame(_ frame: CGRect, on element: AXUIElement) -> Bool {

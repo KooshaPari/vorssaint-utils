@@ -9,6 +9,9 @@ struct WindowPolicyStrings {
     let tileNow: String
     let caption: String
     let resultFormat: String
+    let limit: String
+    let overflowBehavior: String
+    let leaveInPlace: String
 }
 
 extension FeatureStrings {
@@ -39,7 +42,10 @@ extension WindowPolicyStrings {
         layout: "Layout",
         tileNow: "Tile now",
         caption: "Only ordinary windows that can be moved are rearranged. Windows past the layout’s slots are left alone.",
-        resultFormat: "Moved %d windows"
+        resultFormat: "Moved %d windows",
+        limit: "Window limit",
+        overflowBehavior: "Windows past the limit",
+        leaveInPlace: "Leave in place"
     )
 
     static let ptBR = WindowPolicyStrings(
@@ -47,7 +53,10 @@ extension WindowPolicyStrings {
         layout: "Layout",
         tileNow: "Organizar agora",
         caption: "Só janelas comuns que podem ser movidas são reorganizadas. As que passam dos espaços ficam como estão.",
-        resultFormat: "%d janelas movidas"
+        resultFormat: "%d janelas movidas",
+        limit: "Limite de janelas",
+        overflowBehavior: "Janelas além do limite",
+        leaveInPlace: "Deixar como estão"
     )
 
     static let tr = WindowPolicyStrings(
@@ -55,7 +64,10 @@ extension WindowPolicyStrings {
         layout: "Düzen",
         tileNow: "Şimdi düzenle",
         caption: "Yalnızca taşınabilen sıradan pencereler yeniden düzenlenir. Yerleşimdeki yuvaları aşanlar olduğu gibi kalır.",
-        resultFormat: "%d pencere taşındı"
+        resultFormat: "%d pencere taşındı",
+        limit: "Pencere sınırı",
+        overflowBehavior: "Sınırı aşan pencereler",
+        leaveInPlace: "Olduğu gibi bırak"
     )
 
     static let ru = WindowPolicyStrings(
@@ -63,7 +75,10 @@ extension WindowPolicyStrings {
         layout: "Раскладка",
         tileNow: "Упорядочить сейчас",
         caption: "Переставляются только обычные окна, которые можно перемещать. Окна сверх ячеек остаются на месте.",
-        resultFormat: "Перемещено окон: %d"
+        resultFormat: "Перемещено окон: %d",
+        limit: "Предел окон",
+        overflowBehavior: "Окна сверх предела",
+        leaveInPlace: "Оставить на месте"
     )
 
     static let es = WindowPolicyStrings(
@@ -71,7 +86,10 @@ extension WindowPolicyStrings {
         layout: "Disposición",
         tileNow: "Ordenar ahora",
         caption: "Solo se reordenan ventanas normales que se puedan mover. Las que superan los huecos se dejan como están.",
-        resultFormat: "Ventanas movidas: %d"
+        resultFormat: "Ventanas movidas: %d",
+        limit: "Límite de ventanas",
+        overflowBehavior: "Ventanas por encima del límite",
+        leaveInPlace: "Dejar como están"
     )
 
     static let sk = WindowPolicyStrings(
@@ -79,7 +97,10 @@ extension WindowPolicyStrings {
         layout: "Rozloženie",
         tileNow: "Usporiadať teraz",
         caption: "Preusporiadajú sa len bežné okná, ktoré sa dajú presúvať. Okná nad rámec polí zostanú tak, ako sú.",
-        resultFormat: "Presunutých okien: %d"
+        resultFormat: "Presunutých okien: %d",
+        limit: "Limit okien",
+        overflowBehavior: "Okná nad limit",
+        leaveInPlace: "Nechať tak, ako sú"
     )
 
     static let de = WindowPolicyStrings(
@@ -87,7 +108,10 @@ extension WindowPolicyStrings {
         layout: "Anordnung",
         tileNow: "Jetzt anordnen",
         caption: "Nur gewöhnliche, verschiebbare Fenster werden neu angeordnet. Fenster jenseits der Plätze bleiben, wo sie sind.",
-        resultFormat: "Fenster verschoben: %d"
+        resultFormat: "Fenster verschoben: %d",
+        limit: "Fensterlimit",
+        overflowBehavior: "Fenster über dem Limit",
+        leaveInPlace: "An Ort und Stelle lassen"
     )
 
     static let fr = WindowPolicyStrings(
@@ -95,7 +119,10 @@ extension WindowPolicyStrings {
         layout: "Disposition",
         tileNow: "Disposer maintenant",
         caption: "Seules les fenêtres ordinaires déplaçables sont réorganisées. Celles au-delà des emplacements restent en place.",
-        resultFormat: "Fenêtres déplacées : %d"
+        resultFormat: "Fenêtres déplacées : %d",
+        limit: "Limite de fenêtres",
+        overflowBehavior: "Fenêtres au-delà de la limite",
+        leaveInPlace: "Laisser en place"
     )
 
     static let it = WindowPolicyStrings(
@@ -103,7 +130,10 @@ extension WindowPolicyStrings {
         layout: "Disposizione",
         tileNow: "Disponi ora",
         caption: "Vengono riorganizzate solo le finestre normali spostabili. Quelle oltre gli spazi restano dove sono.",
-        resultFormat: "Finestre spostate: %d"
+        resultFormat: "Finestre spostate: %d",
+        limit: "Limite finestre",
+        overflowBehavior: "Finestre oltre il limite",
+        leaveInPlace: "Lascia dove sono"
     )
 
     static let ja = WindowPolicyStrings(
@@ -111,7 +141,10 @@ extension WindowPolicyStrings {
         layout: "レイアウト",
         tileNow: "今すぐ整列",
         caption: "移動できる通常のウインドウだけを並べ替えます。枠を超えたウインドウはそのままです。",
-        resultFormat: "%d 個のウインドウを移動しました"
+        resultFormat: "%d 個のウインドウを移動しました",
+        limit: "ウインドウの上限",
+        overflowBehavior: "上限を超えたウインドウ",
+        leaveInPlace: "そのままにする"
     )
 
     static let ko = WindowPolicyStrings(
@@ -119,7 +152,10 @@ extension WindowPolicyStrings {
         layout: "레이아웃",
         tileNow: "지금 정렬",
         caption: "이동할 수 있는 일반 창만 다시 배치합니다. 슬롯을 넘는 창은 그대로 둡니다.",
-        resultFormat: "%d개 창 이동됨"
+        resultFormat: "%d개 창 이동됨",
+        limit: "창 제한",
+        overflowBehavior: "제한을 넘는 창",
+        leaveInPlace: "그대로 두기"
     )
 
     static let zhHans = WindowPolicyStrings(
@@ -127,7 +163,10 @@ extension WindowPolicyStrings {
         layout: "布局",
         tileNow: "立即排列",
         caption: "只重新排列可移动的普通窗口。超出布局空位的窗口保持不动。",
-        resultFormat: "已移动 %d 个窗口"
+        resultFormat: "已移动 %d 个窗口",
+        limit: "窗口上限",
+        overflowBehavior: "超出上限的窗口",
+        leaveInPlace: "保持不动"
     )
 
     static let zhTW = WindowPolicyStrings(
@@ -135,7 +174,10 @@ extension WindowPolicyStrings {
         layout: "佈局",
         tileNow: "立即排列",
         caption: "只重新排列可移動的一般視窗。超出佈局空位的視窗維持不動。",
-        resultFormat: "已移動 %d 個視窗"
+        resultFormat: "已移動 %d 個視窗",
+        limit: "視窗上限",
+        overflowBehavior: "超出上限的視窗",
+        leaveInPlace: "維持不動"
     )
 
     static let zhHK = WindowPolicyStrings(
@@ -143,7 +185,10 @@ extension WindowPolicyStrings {
         layout: "佈局",
         tileNow: "立即排列",
         caption: "只重新排列可移動的一般視窗。超出佈局空位的視窗維持不動。",
-        resultFormat: "已移動 %d 個視窗"
+        resultFormat: "已移動 %d 個視窗",
+        limit: "視窗上限",
+        overflowBehavior: "超出上限的視窗",
+        leaveInPlace: "維持不動"
     )
 
     static let uk = WindowPolicyStrings(
@@ -151,6 +196,9 @@ extension WindowPolicyStrings {
         layout: "Розкладка",
         tileNow: "Упорядкувати зараз",
         caption: "Переставляються лише звичайні вікна, які можна переміщати. Вікна понад комірки лишаються на місці.",
-        resultFormat: "Переміщено вікон: %d"
+        resultFormat: "Переміщено вікон: %d",
+        limit: "Межа вікон",
+        overflowBehavior: "Вікна понад межу",
+        leaveInPlace: "Залишити на місці"
     )
 }

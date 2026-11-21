@@ -540,6 +540,8 @@ enum DefaultsKey {
     static let windowLayoutIgnoredApps = "windowLayoutIgnoredApps" // apps that temporarily disable window layout while focused
     static let windowPolicyEnabled = "windowPolicyEnabled" // opt-in automatic tiling
     static let windowPolicyLayout = "windowPolicyLayout" // halves | thirds | quarters
+    static let windowPolicyLimit = "windowPolicyLimit" // 0 means the layout decides
+    static let windowPolicyOverflow = "windowPolicyOverflow" // leave | minimize
     static let panelCollapsedSections = "panelCollapsedSections"
     static let panelCollapsedResetVersion = "panelCollapsedResetVersion"
 
@@ -1852,6 +1854,8 @@ enum Defaults {
         DefaultsKey.windowLayoutIgnoredApps: [String](),
         DefaultsKey.windowPolicyEnabled: false,
         DefaultsKey.windowPolicyLayout: WindowTileLayout.quarters.rawValue,
+        DefaultsKey.windowPolicyLimit: 0,
+        DefaultsKey.windowPolicyOverflow: WindowPolicyOverflow.leave.rawValue,
         DefaultsKey.clipboardHistoryQuickPreview: false,
         DefaultsKey.clipboardHistoryShowSourceAppIcons: false,
         DefaultsKey.clipboardHistoryLayout: ClipboardHistoryLayout.list.rawValue,

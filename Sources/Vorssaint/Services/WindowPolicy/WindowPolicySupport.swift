@@ -30,6 +30,13 @@ struct WindowPolicyPlan: Equatable {
     var tiledCount: Int { frames.count }
 }
 
+/// What happens to windows the layout cannot hold. Moving a window to another
+/// Space has no supported Accessibility call, so it is not offered here.
+enum WindowPolicyOverflow: String, CaseIterable {
+    case leave
+    case minimize
+}
+
 /// What the policy knows about one window before deciding anything. A value
 /// type on purpose: the Accessibility controller fills it from AX attributes,
 /// and the filter below is then testable without a window server.

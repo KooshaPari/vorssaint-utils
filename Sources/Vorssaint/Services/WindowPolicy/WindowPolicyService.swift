@@ -21,6 +21,13 @@ final class WindowPolicyService: ObservableObject {
             rawValue: UserDefaults.standard.string(forKey: DefaultsKey.windowPolicyLayout) ?? ""
         ) ?? .quarters
         let gap = CGFloat(max(0, UserDefaults.standard.integer(forKey: DefaultsKey.windowLayoutWindowGap)))
-        lastMovedCount = WindowPolicyAccessibility.tileFrontmostApp(layout: layout, gap: gap)
+        let limit = max(0, UserDefaults.standard.integer(forKey: DefaultsKey.windowPolicyLimit))
+        let overflow = WindowPolicyOverflow(
+            rawValue: UserDefaults.standard.string(forKey: DefaultsKey.windowPolicyOverflow) ?? ""
+        ) ?? .leave
+        lastMovedCount = WindowPolicyAccessibility.tileFrontmostApp(layout: layout,
+                                                                   limit: limit,
+                                                                   overflow: overflow,
+                                                                   gap: gap)
     }
 }
