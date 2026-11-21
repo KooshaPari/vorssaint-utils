@@ -231,6 +231,14 @@ struct ClipboardHistoryEntry: Codable, Equatable, Identifiable {
         pinnedAt != nil
     }
 
+    /// What a plain-text paste sends: the entry's text with every attribute
+    /// gone, or nil for images and files, whose content has no formatting to
+    /// strip and must paste unchanged.
+    var plainTextForPaste: String? {
+        guard kind == .text, !text.isEmpty else { return nil }
+        return text
+    }
+
     var fileNames: [String] {
         filePaths.map { ($0 as NSString).lastPathComponent }
     }

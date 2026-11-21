@@ -1,0 +1,81 @@
+# Clipboard parity with Maccy
+
+Status: analysis for the `dev/maccy-clipboard-parity` branch. The goal is that
+Vorssaint's clipboard replaces Maccy for this machine, so both do not need to be
+installed side by side.
+
+Maccy reference: <https://github.com/p0deje/Maccy> (MIT), README usage section.
+
+## Already covered by Vorssaint
+
+| Maccy behaviour | Vorssaint today | Evidence |
+| --- | --- | --- |
+| Copy history of text, images, files | Present | `Services/Clipboard/ClipboardHistoryService.swift`, `clipboardHistoryIncludeImagesFiles` |
+| Search history | Present | `ClipboardHistorySupport.swift` scoring (`isPinned ? 30 : 0`) |
+| Pin items to the top | Present | `ClipboardHistorySupport.swift:192 pinnedAt`, `:230 isPinned` |
+| Paste automatically into the previous app | Present | `ClipboardHistoryService.copyQuickEntry` → `pasteIntoPreviousApp` |
+| Copy without pasting | Present | `copyOnlyQuickEntry` |
+| Ignore apps | Present | `clipboardHistoryIgnoredApps`, `Services/Clipboard/ClipboardIgnoredApps.swift` |
+| Ignore concealed and transient copies | Present, fixed list | `ClipboardHistorySupport.swift:1163`, `:1175` |
+| Ignore Universal Clipboard | Partly | `ClipboardHistorySupport.swift:1142` type defined, used by URL cleaner only |
+| Sensitive text filtering | Present | `clipboardHistoryFilterSensitiveText`, `ClipboardSensitiveTextPreferenceTests.swift` |
+| Clear recent | Present, unpinned only | `PanelClipboardView.swift:31 clearRecent(ids)` |
+| Auto clear on delay, sleep, display sleep, lock | Present | `ClipboardAutoClearService.swift` |
+| Retention limit and age | Present | `clipboardHistoryLimit`, `clipboardHistoryRetentionDays` |
+| Source app icons, list and card layouts, preview sidebar | Present | `ClipboardQuickPanelView.swift`, `ClipboardEntryPreviewSidebar.swift` |
+| Menu bar preview of the last copy | Present | `clipboardHistoryMenuBarPreview` |
+| Tooltip with the full text | Present | `ClipboardHistorySupport.tooltipCharacters` |
+
+## Gaps to close
+
+1. **Paste without formatting for a history entry.**
+   Maccy pastes the selected item without its rich formatting on `⌥⇧↩`.
+   Vorssaint can strip formatting only for whatever is on the pasteboard right
+   now (`Services/QuickTools/PastePlainService.swift`), not for a history entry.
+   Shipped: `pasteQuickEntryAsPlainText`, bound to ⌥-click, ⌥⇧↩ and a
+   "Paste as plain text" context-menu item. Images and files keep their normal
+   paste.
+
+2. **User-editable pasteboard type ignore list. Shipped.**
+   `ClipboardIgnoredPasteboardTypes` stores extra types in
+   `clipboardHistoryIgnoredPasteboardTypes`, sanitised to real type syntax, and
+   `readPasteboard` skips a copy whose types intersect the list. The list is
+   edited in Settings, beside the ignored-apps list. This covers a password
+   manager's own type and `com.apple.is-remote-clipboard` for Universal
+   Clipboard.
+
+3. **Pause capture and ignore the next copy.**
+   Pause shipped: a panel button, persisted in `clipboardHistoryPaused`, and the
+   capture check reads the preference directly because the self-test build
+   slices that method out of the file. Still open: Maccy's "ignore only the next
+   copy" one-shot skip.
+
+4. **Permanent per-item shortcuts for pinned entries: already covered.**
+   Maccy gives pinned items a stable shortcut. Vorssaint already binds ⌘1 to ⌘9
+   to the nth visible entry (`ClipboardHistoryService.installKeyMonitor`) and
+   sorts pinned entries first, so a pinned snippet is a fixed keystroke away.
+   Nothing to add.
+
+5. **Clear all, including pinned.**
+   `clearRecent` operates on the selected ids and the panel offers no
+   clear-everything path. Add an explicit destructive action that clears pinned
+   entries too, with its own confirmation text.
+
+6. **Clipboard check interval preference.**
+   Maccy exposes it for machines where 500 ms feels slow. Vorssaint has no knob.
+   Add a bounded preference, defaulting to today's behaviour.
+
+7. **Universal Clipboard skip as a first-class switch.**
+   Rather than asking the user to type `com.apple.is-remote-clipboard` into item
+   2's list, expose a switch that adds and removes that type.
+
+## Order of work
+
+Items 1 and 2 first: they change daily behaviour and are the reason Maccy is
+still installed. Items 3 to 7 follow, each with a unit test in `Tests/`, matching
+the existing `ClipboardFeatureTests` style.
+
+## Verification
+
+`./build.sh --test` on macOS, plus `./build.sh --dev` for a hands-on pass. CI runs
+the same build and tests on `macos-15` and `macos-26` (`.github/workflows/ci.yml`).

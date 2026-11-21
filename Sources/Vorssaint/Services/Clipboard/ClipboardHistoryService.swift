@@ -108,6 +108,16 @@ final class ClipboardHistoryService: ObservableObject {
     private var registeredShortcut: GlobalShortcut?
     private var pasteTargetApp: NSRunningApplication?
     private var promptedForAccessibility = false
+    /// True while the user has paused capture. Copies keep landing on the
+    /// pasteboard as usual; the history simply records nothing until capture
+    /// resumes, and the first check after resuming re-baselines so whatever
+    /// was copied during the pause is not recorded late.
+    @Published private(set) var isPaused = UserDefaults.standard.bool(
+        forKey: DefaultsKey.clipboardHistoryPaused)
+    /// Set by the one-shot skip. Deliberately in memory and not a preference:
+    /// it lives for a single copy, and the capture path it affects is compiled
+    /// into the self-test build, where only reads are available.
+    private var skipNextPending = false
     /// Writes coalesce per mutation cycle; the JSON encode and the disk write
     /// stay off the main thread (a full history of long texts is real work),
     /// serialized so blobs land in mutation order.
@@ -133,6 +143,29 @@ final class ClipboardHistoryService: ObservableObject {
             stop()
             unregisterHotkey()
         }
+    }
+
+    /// Pauses or resumes recording. The preference is persisted so the state
+    /// survives a relaunch, the way a deliberate "do not record this" does in
+    /// Maccy.
+    func setPaused(_ paused: Bool) {
+        guard isPaused != paused else { return }
+        isPaused = paused
+        UserDefaults.standard.set(paused, forKey: DefaultsKey.clipboardHistoryPaused)
+        guard isRunning else { return }
+        if paused {
+            latestPasteboardEntry = nil
+            captureState.invalidate()
+        } else {
+            captureState.restart()
+            captureIfChanged()
+        }
+    }
+
+    /// Leaves the next copy out of the history and clears the flag on the way
+    /// out, the way Maccy's one-shot ignore works.
+    func skipNextCopy() {
+        skipNextPending = true
     }
 
     /// Skips capturing pasteboard changes up to the given change count. Quick
@@ -392,6 +425,16 @@ final class ClipboardHistoryService: ObservableObject {
         save()
     }
 
+    /// Empties the history completely, pinned entries included. Kept apart from
+    /// `clearRecent` so the confirmation can say exactly what is about to go.
+    func clearAllIncludingPinned() {
+        guard !entries.isEmpty else { return }
+        entries.removeAll()
+        latestPasteboardEntry = nil
+        pruneQuickBatchSelection()
+        save()
+    }
+
     func canMove(_ entry: ClipboardHistoryEntry, _ direction: ClipboardHistoryMoveDirection) -> Bool {
         moveDestination(for: entry, direction) != nil
     }
@@ -581,6 +624,18 @@ final class ClipboardHistoryService: ObservableObject {
         }
     }
 
+    /// ⌥⇧↩, the counterpart of Maccy's paste-without-formatting. A batch has no
+    /// single text to strip, so it takes the ordinary paste of the selection.
+    func pasteSelectedQuickEntryAsPlainText() {
+        let selectedEntries = quickEntriesForPrimaryAction()
+        guard !selectedEntries.isEmpty else { return }
+        if selectedEntries.count == 1 {
+            pasteQuickEntryAsPlainText(selectedEntries[0])
+        } else {
+            copyQuickEntries(selectedEntries)
+        }
+    }
+
     func togglePinSelectedQuickEntry() {
         guard let entry = selectedQuickEntry else { return }
         togglePin(entry)
@@ -652,6 +707,47 @@ final class ClipboardHistoryService: ObservableObject {
         }
     }
 
+    /// Pastes the entry with its formatting stripped, the counterpart of
+    /// Maccy's paste-without-formatting. Only the text reaches the destination
+    /// app; the previous clipboard is put back afterwards, so a later normal
+    /// paste still carries the user's original rich content.
+    ///
+    /// Images and files have nothing to strip, so they take the ordinary paste
+    /// rather than silently doing nothing.
+    func pasteQuickEntryAsPlainText(_ entry: ClipboardHistoryEntry) {
+        guard let plain = entry.plainTextForPaste else {
+            copyQuickEntry(entry)
+            return
+        }
+        let target = pasteTargetApp
+        hideHistoryWindow()
+        pasteTargetApp = nil
+        // No target means the panel opened over Vorssaint itself or an app
+        // without a Dock icon, where a pick is only a copy and stays silent.
+        guard let target, !target.isTerminated else { return }
+        guard ClipboardHistoryPasteTarget.acceptsSyntheticPaste(bundleID: target.bundleIdentifier) else {
+            return
+        }
+        guard AXIsProcessTrusted() else {
+            if promptedForAccessibility {
+                NSSound.beep()
+            } else {
+                promptedForAccessibility = true
+                Permissions.shared.requestAccessibility()
+            }
+            return
+        }
+        touch([entry.id])
+        target.activate(options: [])
+        // Same activation beat the rich paste uses, so the keystroke lands in
+        // the app the panel was opened over and not in Vorssaint.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            if !TransientPaste.shared.paste(plain, didFail: { NSSound.beep() }) {
+                NSSound.beep()
+            }
+        }
+    }
+
     func editImage(_ entry: ClipboardHistoryEntry) {
         guard entry.kind == .image, AppFeature.screenshot.isAvailable,
               let directory = ClipboardImageStore.directory else { return }
@@ -697,12 +793,7 @@ final class ClipboardHistoryService: ObservableObject {
             isRunning = true
             return
         }
-        let timer = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in
-            self?.captureIfChanged()
-        }
-        timer.tolerance = 0.25
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
+        installCaptureTimer()
         let retentionTimer = Timer(timeInterval: 3_600, repeats: true) { [weak self] _ in
             self?.trimToLimit()
         }
@@ -731,6 +822,27 @@ final class ClipboardHistoryService: ObservableObject {
         latestPasteboardEntry = nil
     }
 
+    /// Builds the poll timer from the interval preference. Called when capture
+    /// starts and again whenever the preference changes.
+    private func installCaptureTimer() {
+        let interval = Defaults.sanitizedClipboardCheckInterval(
+            UserDefaults.standard.double(forKey: DefaultsKey.clipboardHistoryCheckInterval))
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            self?.tick()
+        }
+        timer.tolerance = min(0.25, interval / 2)
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    /// Rebuilds the poll timer after the interval preference changes. The
+    /// retention timer is untouched.
+    func applyCaptureInterval() {
+        guard isRunning else { return }
+        timer?.invalidate()
+        installCaptureTimer()
+    }
+
     /// What the background pasteboard read hands back to the main thread.
     private enum CapturedContent {
         case transient
@@ -739,8 +851,32 @@ final class ClipboardHistoryService: ObservableObject {
         case text(String)
     }
 
+    /// One poll of the capture loop. The one-shot skip is consumed here rather
+    /// than inside the capture path, because that path is compiled into the
+    /// self-test build where only preference reads exist. Adopting the current
+    /// change count moves the baseline past the copy the user asked to skip, so
+    /// it is never recorded and the next copy is.
+    private func tick() {
+        guard isRunning, !isPaused else { return }
+        guard skipNextPending else {
+            captureIfChanged()
+            return
+        }
+        skipNextPending = false
+        latestPasteboardEntry = nil
+        GeneralPasteboardAccess.shared.async({ NSPasteboard.general.changeCount }) { [weak self] count in
+            guard let self else { return }
+            self.lastChangeCount = max(self.lastChangeCount, count)
+        }
+    }
+
     private func captureIfChanged(historyPanelClosing: Bool = false) {
-        guard isRunning, let generation = captureState.begin() else { return }
+        // The self-test build slices this method out of the file on its own, so
+        // it cannot lean on instance state declared elsewhere: read the pause
+        // preference directly, the way the capture options above are read.
+        guard isRunning,
+              !UserDefaults.standard.bool(forKey: DefaultsKey.clipboardHistoryPaused),
+              let generation = captureState.begin() else { return }
         // On start (including stop/start during a blocked read), establish a
         // fresh baseline before capturing. Old completions cannot consume it.
         let baseline = captureState.needsBaseline
@@ -873,6 +1009,9 @@ final class ClipboardHistoryService: ObservableObject {
         let types = (pasteboard.types ?? []).map(\.rawValue)
         if ClipboardHistorySensitiveText.isConcealed(types) { return nil }
         if ClipboardHistorySensitiveText.isTransient(types) { return .transient }
+        // Types the user listed as never worth keeping: a password manager's
+        // own mark, or Universal Clipboard's, which Maccy exposes the same way.
+        if ClipboardIgnoredPasteboardTypes.shared.matches(types) { return nil }
         // Files first: a Finder copy also carries name strings, and a browser
         // image copy also carries URL text, so richer content wins over its
         // own textual fallbacks.
@@ -1581,6 +1720,10 @@ final class ClipboardHistoryService: ObservableObject {
                 }
                 if modifiers == [.shift] {
                     self.copySelectedQuickEntryOnly()
+                    return nil
+                }
+                if modifiers == [.option, .shift] {
+                    self.pasteSelectedQuickEntryAsPlainText()
                     return nil
                 }
                 if modifiers.isEmpty {

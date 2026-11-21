@@ -119,7 +119,21 @@ final class AgentUsageService: ObservableObject {
     private var savedMark: Int?
     private var lastSave = Date.distantPast
 
-    private init() {}
+    private init() {
+        // A provider request records usage outside this service's queue, and
+        // the agents page should show it without waiting for the next tick.
+        NotificationCenter.default.addObserver(forName: AgentKeyRegistry.usageDidChange,
+                                               object: nil, queue: .main) { [weak self] _ in
+            self?.keyUsageDidChange()
+        }
+    }
+
+    /// A provider key's usage or health changed. Publishes through the same
+    /// coalesced path as log updates, so a burst of requests redraws once.
+    func keyUsageDidChange() {
+        guard running else { return }
+        queue.async { [self] in schedulePublish() }
+    }
 
     func syncWithPreferences() {
         CodexProfileLimitsService.shared.synchronize()
@@ -623,13 +637,15 @@ final class AgentUsageService: ObservableObject {
         let claudeOrganization: String?
         let claudeIdentity: ClaudeAccountProfile.Identity?
         let claudeApp: [AgentClaudeAppUsage.Sample]
+        let keyUsage: [AgentKeyUsageRow]
     }
 
     /// Runs on `queue`.
     private var inputs: Inputs {
         Inputs(records: store.records.count, turns: store.turns, limits: store.limits, codexPlan: store.codexPlan,
                claudePlan: claudePlan, claudeOrganization: claudeOrganization, claudeIdentity: claudeIdentity,
-               claudeApp: claudeAppSamples)
+               claudeApp: claudeAppSamples, keyUsage: enabled.contains(.opencode)
+                   ? AgentKeyRegistry.shared.usageRows(at: Date()) : [])
     }
 
     /// Runs on `queue` and hands the finished snapshot to the main thread.
@@ -640,7 +656,9 @@ final class AgentUsageService: ObservableObject {
         if let claudePlan { plans[.claude] = claudePlan }
         if let codex = AgentPlans.codex(planType: store.codexPlan) { plans[.codex] = codex }
         let next = store.snapshot(plans: plans, providers: enabled, now: Date())
-        published = next
+        var keyed = next
+        keyed.keyUsage = enabled.contains(.opencode) ? AgentKeyRegistry.shared.usageRows(at: next.now) : []
+        published = keyed
         checkBudget(next)
         let checked = enabled.contains(.claude) ? claudeAppSamples.last(where: {
             claudeOrganization == nil || $0.organization == nil || $0.organization == claudeOrganization
@@ -653,7 +671,7 @@ final class AgentUsageService: ObservableObject {
             if self.claudeAppChecked != checked { self.claudeAppChecked = checked }
             if self.claudeAccountIdentity != identity { self.claudeAccountIdentity = identity }
             if self.pricesUpdated != prices { self.pricesUpdated = prices }
-            if self.snapshot != next { self.snapshot = next }
+            if self.snapshot != keyed { self.snapshot = keyed }
         }
     }
 

@@ -773,6 +773,9 @@ private struct FeatureHubRow: View {
                             .background(Capsule().fill(Color.accentColor))
                             .accessibilityHidden(true)
                     }
+                    if NewFeatureBadges.isNew(feature) {
+                        KnuTag()
+                    }
                 }
                 Text(feature.hubDescription(hub))
                     .font(.caption)

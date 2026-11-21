@@ -7,12 +7,15 @@ struct ClipboardSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var features = FeatureRuntime.shared
     @ObservedObject private var history = ClipboardHistoryService.shared
+    @ObservedObject private var ignoredTypes = ClipboardIgnoredPasteboardTypes.shared
     @ObservedObject private var pastePlain = PastePlainService.shared
     @ObservedObject private var permissions = Permissions.shared
     @State private var clearingIDs: [UUID: Date]?
     @AppStorage(DefaultsKey.pastePlainEnabled) private var pastePlainEnabled = false
     @AppStorage(DefaultsKey.clipboardHistoryEnabled) private var enabled = false
     @AppStorage(DefaultsKey.clipboardHistoryLimit) private var limit = 50
+    @AppStorage(DefaultsKey.clipboardHistoryCheckInterval)
+    private var checkInterval = Defaults.defaultClipboardCheckInterval
     @AppStorage(DefaultsKey.clipboardHistoryRetentionDays) private var retentionDays = 0
     @AppStorage(DefaultsKey.clipboardHistoryFilterSensitiveText) private var skipSensitive = false
     @AppStorage(DefaultsKey.clipboardHistoryIncludeImagesFiles) private var includeImagesFiles = true
@@ -38,6 +41,32 @@ struct ClipboardSettings: View {
     private var retentionText: ClipboardRetentionStrings {
         FeatureStrings.clipboardRetention(l10n.language)
     }
+
+    private var skipText: ClipboardSkipStrings {
+        FeatureStrings.clipboardSkip(l10n.language)
+    }
+
+    private var skipExtras: ClipboardExtrasStrings {
+        FeatureStrings.clipboardExtras(l10n.language)
+    }
+
+    /// Universal Clipboard is one entry in the ignored-types list, so the switch
+    /// adds and removes that entry instead of keeping a second copy of the state
+    /// that could drift out of sync with the list.
+    private var universalClipboardBinding: Binding<Bool> {
+        Binding(
+            get: { ignoredTypes.types.contains(Self.universalClipboardType) },
+            set: { isOn in
+                if isOn {
+                    ignoredTypes.add(Self.universalClipboardType)
+                } else {
+                    ignoredTypes.remove(Self.universalClipboardType)
+                }
+            }
+        )
+    }
+
+    private static let universalClipboardType = "com.apple.is-remote-clipboard"
 
     var body: some View {
         Form {
@@ -77,6 +106,13 @@ struct ClipboardSettings: View {
                         .foregroundStyle(.secondary)
                     ClipboardIgnoredAppsList()
                         .disabled(!enabled)
+                    ClipboardIgnoredTypesList()
+                        .disabled(!enabled)
+                    Toggle(skipText.universalClipboard, isOn: universalClipboardBinding)
+                        .disabled(!enabled)
+                    Text(skipText.universalClipboardCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     Picker(text.limit, selection: $limit) {
                         ForEach(Defaults.allowedClipboardHistoryLimits, id: \.self) { value in
                             Text(value == 0 ? text.limitUnlimited : "\(value)").tag(value)
@@ -90,6 +126,18 @@ struct ClipboardSettings: View {
                     }
                     .disabled(!enabled)
                     Text(retentionText.caption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker(skipExtras.checkInterval, selection: $checkInterval) {
+                        ForEach(Defaults.allowedClipboardCheckIntervals, id: \.self) { value in
+                            Text(String(format: "%g s", value)).tag(value)
+                        }
+                    }
+                    .disabled(!enabled)
+                    .onChange(of: checkInterval) { _, _ in
+                        history.applyCaptureInterval()
+                    }
+                    Text(skipExtras.checkIntervalCaption)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

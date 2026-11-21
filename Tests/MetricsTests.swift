@@ -27,6 +27,16 @@ struct MetricsTests {
                 ClipboardFeatureTests.run(suite)
                 PastePlainTests.run(suite)
             }),
+            ("window-policy", {
+                WindowPolicyTests.run(suite)
+            }),
+            ("hidden-preferences", {
+                HiddenPreferenceTests.run(suite)
+            }),
+            ("agent-keys", {
+                AgentKeyPoolTests.run(suite)
+                AgentKeyUsageTests.run(suite)
+            }),
             ("pointer-input", {
                 PointerOnDisplayContract.run(suite)
                 PointerInputFeatureTests.run(suite)

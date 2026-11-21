@@ -538,6 +538,10 @@ enum DefaultsKey {
     static let windowLayoutMarginPercent = "windowLayoutMarginPercent" // per-edge percentage for margin maximize
     static let windowLayoutSideRepeatCyclesThirds = "windowLayoutSideRepeatCyclesThirds" // repeated Left/Right cycles half, 2/3, 1/3 on the same display
     static let windowLayoutIgnoredApps = "windowLayoutIgnoredApps" // apps that temporarily disable window layout while focused
+    static let windowPolicyEnabled = "windowPolicyEnabled" // opt-in automatic tiling
+    static let windowPolicyLayout = "windowPolicyLayout" // halves | thirds | quarters
+    static let windowPolicyLimit = "windowPolicyLimit" // 0 means the layout decides
+    static let windowPolicyOverflow = "windowPolicyOverflow" // leave | minimize
     static let panelCollapsedSections = "panelCollapsedSections"
     static let panelCollapsedResetVersion = "panelCollapsedResetVersion"
 
@@ -586,13 +590,16 @@ enum DefaultsKey {
 
     // Clipboard history — text only, opt-in and local.
     static let clipboardHistoryEnabled = "clipboardHistoryEnabled"
+    static let clipboardHistoryPaused = "clipboardHistoryPaused" // paused by the user: copies keep happening, nothing is recorded
     static let clipboardHistoryEntries = "clipboardHistoryEntries"
     static let clipboardHistoryLimit = "clipboardHistoryLimit"
+    static let clipboardHistoryCheckInterval = "clipboardHistoryCheckInterval" // seconds between pasteboard polls
     static let clipboardHistoryRetentionDays = "clipboardHistoryRetentionDays" // 0 keeps items until the limit drops them
     // A separate opt-in from the old, enabled-by-default text heuristic.
     static let clipboardHistoryFilterSensitiveText = "clipboardHistoryFilterSensitiveText"
     static let clipboardHistoryIncludeImagesFiles = "clipboardHistoryIncludeImagesFiles" // capture copied images and files too
     static let clipboardHistoryIgnoredApps = "clipboardHistoryIgnoredApps" // apps whose copies are never saved
+    static let clipboardHistoryIgnoredPasteboardTypes = "clipboardHistoryIgnoredPasteboardTypes" // extra pasteboard types that are never saved
     static let clipboardHistoryQuickPreview = "clipboardHistoryQuickPreview"
     static let clipboardHistoryShowSourceAppIcons = "clipboardHistoryShowSourceAppIcons" // source app icons beside list entries
     static let clipboardHistoryLayout = "clipboardHistoryLayout" // cards | list, how the history window shows entries
@@ -1235,6 +1242,8 @@ enum Defaults {
     static let allowedMonitorMemoryMetrics = ["used", "app"]
     static let allowedPreviewSizes = ["small", "normal", "large", "xlarge"]
     static let allowedClipboardHistoryLimits = [20, 50, 100, 250, 500, 1_000, 10_000, 0]
+    static let allowedClipboardCheckIntervals: [Double] = [0.25, 0.5, 0.8, 1.5, 3]
+    static let defaultClipboardCheckInterval: Double = 0.8
     static let allowedClipboardHistoryRetentionDays = [1, 7, 30, 90, 365, 0]
     static let allowedClipboardAutoClearDelayRange = 5...3_600
     static let defaultClipboardAutoClearDelay = 20
@@ -1834,12 +1843,19 @@ enum Defaults {
         DefaultsKey.mediaTextAccurate: true,
         DefaultsKey.mediaTextLanguageCorrection: true,
         DefaultsKey.clipboardHistoryEnabled: false,
+        DefaultsKey.clipboardHistoryPaused: false,
         DefaultsKey.clipboardHistoryLimit: 50,
+        DefaultsKey.clipboardHistoryCheckInterval: defaultClipboardCheckInterval,
         DefaultsKey.clipboardHistoryRetentionDays: 0,
         DefaultsKey.clipboardHistoryFilterSensitiveText: false,
         DefaultsKey.clipboardHistoryIncludeImagesFiles: true,
         DefaultsKey.clipboardHistoryIgnoredApps: [String](),
+        DefaultsKey.clipboardHistoryIgnoredPasteboardTypes: [String](),
         DefaultsKey.windowLayoutIgnoredApps: [String](),
+        DefaultsKey.windowPolicyEnabled: false,
+        DefaultsKey.windowPolicyLayout: WindowTileLayout.quarters.rawValue,
+        DefaultsKey.windowPolicyLimit: 0,
+        DefaultsKey.windowPolicyOverflow: WindowPolicyOverflow.leave.rawValue,
         DefaultsKey.clipboardHistoryQuickPreview: false,
         DefaultsKey.clipboardHistoryShowSourceAppIcons: false,
         DefaultsKey.clipboardHistoryLayout: ClipboardHistoryLayout.list.rawValue,
@@ -2704,6 +2720,10 @@ enum Defaults {
         allowedClipboardHistoryLimits.contains(value) ? value : 50
     }
 
+    static func sanitizedClipboardCheckInterval(_ value: Double) -> Double {
+        allowedClipboardCheckIntervals.contains(value) ? value : defaultClipboardCheckInterval
+    }
+
     static func sanitizedClipboardHistoryRetentionDays(_ value: Int) -> Int {
         allowedClipboardHistoryRetentionDays.contains(value) ? value : 0
     }
@@ -2730,6 +2750,25 @@ enum Defaults {
             guard !bundleID.isEmpty, !seen.contains(bundleID) else { continue }
             seen.insert(bundleID)
             result.append(bundleID)
+        }
+        return result
+    }
+
+    /// Pasteboard type identifiers. A type is a dot-separated name or an Apple
+    /// UTI, so anything carrying a space, slash or other punctuation can never
+    /// match a real one and is dropped instead of stored and silently ignored.
+    static func sanitizedPasteboardTypeList(_ types: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for raw in types {
+            let type = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            let allowed = type.allSatisfy { character in
+                character.isLetter || character.isNumber
+                    || character == "." || character == "-" || character == "_" || character == "$"
+            }
+            guard !type.isEmpty, type.count <= 200, allowed, !seen.contains(type) else { continue }
+            seen.insert(type)
+            result.append(type)
         }
         return result
     }

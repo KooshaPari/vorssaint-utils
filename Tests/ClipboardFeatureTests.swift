@@ -2032,6 +2032,16 @@ enum ClipboardPreviewContract {
         suite.expect(service.latestPasteboardEntry == nil,
                      "removing the current entry still clears its menu-bar preview")
         service.setEntries([current, other])
+        suite.expect(current.plainTextForPaste == "Actual clipboard text",
+                     "a text entry pastes its text when formatting is stripped")
+        suite.expect(ClipboardHistoryEntry(text: "").plainTextForPaste == nil,
+                     "an empty text entry has nothing to paste as plain text")
+        suite.expect(ClipboardHistoryEntry(text: "", kind: .image,
+                                           imageFile: "a.png").plainTextForPaste == nil,
+                     "an image has no formatting to strip and pastes unchanged")
+        suite.expect(ClipboardHistoryEntry(text: "", kind: .files,
+                                           filePaths: ["/tmp/a.txt"]).plainTextForPaste == nil,
+                     "a file entry has no formatting to strip and pastes unchanged")
         service.latestPasteboardEntry = current
         service.togglePin(current)
         suite.expect(service.latestPasteboardEntry?.text == current.text

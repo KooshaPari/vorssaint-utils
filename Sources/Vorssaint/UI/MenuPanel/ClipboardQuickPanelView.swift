@@ -721,6 +721,11 @@ private struct QuickEntryView: View, Equatable {
         Button(l10n.s.menuPaste) {
             history.copyQuickEntry(entry)
         }
+        if entry.plainTextForPaste != nil {
+            Button(l10n.s.pastePlainName) {
+                history.pasteQuickEntryAsPlainText(entry)
+            }
+        }
         Button(text.copy) {
             history.copyOnlyQuickEntry(entry)
         }
@@ -745,8 +750,11 @@ private struct QuickEntryView: View, Equatable {
     private func activate(_ entry: ClipboardHistoryEntry) {
         // Finder muscle memory: ⌘-click and ⇧-click build a selection.
         // A plain click pastes; on a selected row it pastes the selection.
-        let modifiers = NSEvent.modifierFlags.intersection([.command, .shift])
-        if modifiers.contains(.command) {
+        // ⌥-click pastes the text without its formatting, the way Maccy does.
+        let modifiers = NSEvent.modifierFlags.intersection([.command, .shift, .option])
+        if modifiers.contains(.option) {
+            history.pasteQuickEntryAsPlainText(entry)
+        } else if modifiers.contains(.command) {
             history.toggleQuickBatchSelection(entry)
         } else if modifiers.contains(.shift) {
             history.extendQuickBatchSelection(to: entry)

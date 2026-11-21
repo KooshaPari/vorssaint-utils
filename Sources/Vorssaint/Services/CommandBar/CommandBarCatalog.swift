@@ -494,6 +494,17 @@ enum CommandBarCatalog {
                 trouble: accessibilityTrouble(),
                 run: { _ in afterBeat { PastePlainService.shared.performPastePlain() } }))
         }
+        if AppFeature.windowLayout.isAvailable {
+            let policy = FeatureStrings.windowPolicy(language)
+            entries.append(CommandBarEntry(
+                id: "action.tileNow",
+                title: policy.tileNow,
+                subtitle: area(.windowLayout),
+                keywords: [policy.enabled, WindowPolicyStrings.enUS.enabled].joined(separator: " "),
+                icon: .symbol("rectangle.split.2x2"),
+                trouble: accessibilityTrouble(),
+                run: { _ in afterBeat { WindowPolicyService.shared.tileNow() } }))
+        }
         if AppFeature.cleaningMode.isAvailable {
             entries.append(CommandBarEntry(
                 id: "action.cleaningMode",

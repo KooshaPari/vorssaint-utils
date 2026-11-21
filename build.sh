@@ -67,6 +67,13 @@ ENTITLEMENTS="Resources/Vorssaint.entitlements"
 LEGACY_IDENTITY="Vorssaint Utils Signing"
 
 developer_id_identity() {
+    # A build run outside the GUI session (over SSH, or any headless run) cannot
+    # use the login keychain's Developer ID key: the keychain is locked there and
+    # codesign answers errSecInternalComponent instead of prompting. Setting
+    # VORSSAINT_SKIP_DEVELOPER_ID=1 falls through to the stable local identity,
+    # which is what a Developer variant wants anyway: grants tied to its hash
+    # survive rebuilds, and nothing reaches for a key it cannot unlock.
+    if [[ "${VORSSAINT_SKIP_DEVELOPER_ID:-0}" == "1" ]]; then return 0; fi
     security find-identity -v -p codesigning 2>/dev/null \
         | grep 'Developer ID Application' \
         | head -1 \
@@ -499,6 +506,12 @@ if (( TEST )); then
         Sources/Vorssaint/Core/MouseClickDebounceStrings.swift
         Sources/Vorssaint/Core/MouseExceptionStrings.swift
         Sources/Vorssaint/Core/ClipboardIgnoredAppsStrings.swift
+        Sources/Vorssaint/Core/ClipboardIgnoredTypesStrings.swift
+        Sources/Vorssaint/Core/ClipboardSkipStrings.swift
+        Sources/Vorssaint/Core/ClipboardExtrasStrings.swift
+        Sources/Vorssaint/Core/WindowPolicyStrings.swift
+        Sources/Vorssaint/Core/HiddenPreferenceStrings.swift
+        Sources/Vorssaint/Services/Clipboard/ClipboardIgnoredPasteboardTypes.swift
         Sources/Vorssaint/Core/ClipboardRetentionStrings.swift
         Sources/Vorssaint/Core/WindowLayoutIgnoredAppsStrings.swift
         Sources/Vorssaint/Services/WindowLayout/WindowLayoutIgnoredApps.swift
@@ -580,6 +593,16 @@ if (( TEST )); then
         Sources/Vorssaint/Services/Metrics/TemperatureSensorSelector.swift
         Sources/Vorssaint/Services/Metrics/SustainedAlertGate.swift
         Sources/Vorssaint/Services/WindowLayout/WindowLayoutSupport.swift
+        Sources/Vorssaint/Services/WindowPolicy/WindowPolicySupport.swift
+        Sources/Vorssaint/Services/WindowPolicy/WindowPolicyAccessibility.swift
+        Sources/Vorssaint/Services/WindowPolicy/WindowPolicyService.swift
+        Sources/Vorssaint/Services/HiddenPreferences/HiddenPreferenceCatalog.swift
+        Sources/Vorssaint/Services/HiddenPreferences/HiddenPreferenceStore.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentKeyPool.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentKeyUsage.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentKeyStore.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentSecretStore.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentKeyRegistry.swift
         Sources/Vorssaint/Services/WindowLayout/WindowStageManagerSupport.swift
         Sources/Vorssaint/Core/WindowStageManagerStrings.swift
         Sources/Vorssaint/Core/WindowEdgeSnapRestoreStrings.swift

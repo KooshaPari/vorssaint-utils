@@ -15,6 +15,7 @@ struct PanelClipboardView: View {
     /// it still carries the tick.
     @State private var copyCount = 0
     @State private var clearingIDs: [UUID: Date]?
+    @State private var confirmingClearAll = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.notchPresentation) private var inNotch
 
@@ -22,6 +23,14 @@ struct PanelClipboardView: View {
 
     private var text: ClipboardFeatureStrings {
         FeatureStrings.clipboard(l10n.language)
+    }
+
+    private var skipText: ClipboardSkipStrings {
+        FeatureStrings.clipboardSkip(l10n.language)
+    }
+
+    private var extras: ClipboardExtrasStrings {
+        FeatureStrings.clipboardExtras(l10n.language)
     }
 
     /// The alert would hang from the island as a sheet; there it asks on its own.
@@ -66,6 +75,9 @@ struct PanelClipboardView: View {
         HStack(spacing: 8) {
             Label(text.title, systemImage: "doc.on.clipboard")
                 .font(.system(size: 12, weight: .semibold))
+            if NewFeatureBadges.isNew(.clipboardHistory) {
+                KnuTag()
+            }
             Spacer()
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
@@ -113,6 +125,35 @@ struct PanelClipboardView: View {
                 .help(text.clearRecent)
                 .disabled(history.recentEntries.isEmpty)
                 .modifier(ClipboardClearRecentConfirmation(entryIDs: $clearingIDs))
+                .contextMenu {
+                    Button(role: .destructive) {
+                        confirmingClearAll = true
+                    } label: {
+                        Text(extras.clearAll)
+                    }
+                }
+                Button {
+                    history.setPaused(!history.isPaused)
+                } label: {
+                    Image(systemName: history.isPaused ? "play.circle" : "pause.circle")
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 22)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .help(l10n.s.actionPause)
+                .disabled(!enabled)
+                Button {
+                    history.skipNextCopy()
+                } label: {
+                    Image(systemName: "forward.end")
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 22)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .help(skipText.skipNext)
+                .disabled(!enabled || history.isPaused)
                 Button {
                     history.showHistoryWindow()
                 } label: {
@@ -126,6 +167,14 @@ struct PanelClipboardView: View {
             }
         }
         .panelCard()
+        .alert(extras.clearAll, isPresented: $confirmingClearAll) {
+            Button(extras.clearAll, role: .destructive) {
+                history.clearAllIncludingPinned()
+            }
+            Button(l10n.s.uninstallerCancel, role: .cancel) {}
+        } message: {
+            Text(extras.clearAllConfirm)
+        }
     }
 
     @ViewBuilder
