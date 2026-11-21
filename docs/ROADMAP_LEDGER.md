@@ -93,6 +93,21 @@ implementation, bundle it.
   properties declared elsewhere, so such paths read preferences directly.
 - C: on the Windows host is below the 500 GB threshold, so new work lives on E:.
 
+## Workspace topology (corrected 2026-11-21)
+
+- Git work happens on `C:\Users\koosh\CodeProjects\vorssaint-utils`, a fresh
+  clone with `core.autocrlf=false`, `core.preloadIndex=true`,
+  `feature.manyFiles=true`, `core.untrackedCache=true` and `gc.auto=0`.
+  `git status` measures about 0.8 s there.
+- The earlier `E:\koosh\CodeProjects\vorssaint-utils` clone is retired for git
+  work: E: is under bad-block investigation and must be treated as read-mostly,
+  and its CRLF worktree forced full-content conversion on every operation, which
+  is what produced multi-minute operations and stale `index.lock` files.
+- The Mac is used only for macOS builds and the suite. It is not a commit host.
+- NixOS at 100.112.143.99 is online but SSH key auth is refused for `koosh` and
+  `kooshapari` with the available keys, so offloading there is blocked until the
+  operator provisions access.
+
 ## G. Later candidates from operator dumps (2026-11-21)
 
 | Candidate | Note | Status |
