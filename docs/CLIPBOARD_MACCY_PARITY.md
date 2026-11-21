@@ -32,8 +32,9 @@ Maccy reference: <https://github.com/p0deje/Maccy> (MIT), README usage section.
    Maccy pastes the selected item without its rich formatting on `⌥⇧↩`.
    Vorssaint can strip formatting only for whatever is on the pasteboard right
    now (`Services/QuickTools/PastePlainService.swift`), not for a history entry.
-   Add a plain-text paste path next to `copyQuickEntry`, and a modified click and
-   key equivalent in the quick panel. Images and files keep their normal paste.
+   Shipped: `pasteQuickEntryAsPlainText`, bound to ⌥-click, ⌥⇧↩ and a
+   "Paste as plain text" context-menu item. Images and files keep their normal
+   paste.
 
 2. **User-editable pasteboard type ignore list.**
    `ClipboardHistorySensitiveText` hardcodes `org.nspasteboard.ConcealedType`,
@@ -43,14 +44,16 @@ Maccy reference: <https://github.com/p0deje/Maccy> (MIT), README usage section.
    list of extra types, stored as a default, appended to the hardcoded set.
 
 3. **Pause capture and ignore the next copy.**
-   No equivalent of Maccy's `ignoreEvents` or its "ignore only the next copy"
-   toggle exists. Add a capture pause that the menu bar item can toggle, plus a
-   one-shot skip, both reflected in the panel so the state is visible.
+   Pause shipped: a panel button, persisted in `clipboardHistoryPaused`, and the
+   capture check reads the preference directly because the self-test build
+   slices that method out of the file. Still open: Maccy's "ignore only the next
+   copy" one-shot skip.
 
-4. **Permanent per-item shortcuts for pinned entries.**
-   Maccy gives every pinned item a stable shortcut so a specific snippet is one
-   keystroke away. Vorssaint pinned rows have no accelerator. Assign a stable
-   index to pinned entries and bind it in the quick panel.
+4. **Permanent per-item shortcuts for pinned entries: already covered.**
+   Maccy gives pinned items a stable shortcut. Vorssaint already binds ⌘1 to ⌘9
+   to the nth visible entry (`ClipboardHistoryService.installKeyMonitor`) and
+   sorts pinned entries first, so a pinned snippet is a fixed keystroke away.
+   Nothing to add.
 
 5. **Clear all, including pinned.**
    `clearRecent` operates on the selected ids and the panel offers no

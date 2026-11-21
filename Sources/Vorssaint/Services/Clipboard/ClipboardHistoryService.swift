@@ -604,6 +604,18 @@ final class ClipboardHistoryService: ObservableObject {
         }
     }
 
+    /// ⌥⇧↩, the counterpart of Maccy's paste-without-formatting. A batch has no
+    /// single text to strip, so it takes the ordinary paste of the selection.
+    func pasteSelectedQuickEntryAsPlainText() {
+        let selectedEntries = quickEntriesForPrimaryAction()
+        guard !selectedEntries.isEmpty else { return }
+        if selectedEntries.count == 1 {
+            pasteQuickEntryAsPlainText(selectedEntries[0])
+        } else {
+            copyQuickEntries(selectedEntries)
+        }
+    }
+
     func togglePinSelectedQuickEntry() {
         guard let entry = selectedQuickEntry else { return }
         togglePin(entry)
@@ -1650,6 +1662,10 @@ final class ClipboardHistoryService: ObservableObject {
                 }
                 if modifiers == [.shift] {
                     self.copySelectedQuickEntryOnly()
+                    return nil
+                }
+                if modifiers == [.option, .shift] {
+                    self.pasteSelectedQuickEntryAsPlainText()
                     return nil
                 }
                 if modifiers.isEmpty {
