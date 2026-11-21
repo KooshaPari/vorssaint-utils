@@ -804,7 +804,12 @@ final class ClipboardHistoryService: ObservableObject {
     }
 
     private func captureIfChanged(historyPanelClosing: Bool = false) {
-        guard isRunning, !isPaused, let generation = captureState.begin() else { return }
+        // The self-test build slices this method out of the file on its own, so
+        // it cannot lean on instance state declared elsewhere: read the pause
+        // preference directly, the way the capture options above are read.
+        guard isRunning,
+              !UserDefaults.standard.bool(forKey: DefaultsKey.clipboardHistoryPaused),
+              let generation = captureState.begin() else { return }
         // On start (including stop/start during a blocked read), establish a
         // fresh baseline before capturing. Old completions cannot consume it.
         let baseline = captureState.needsBaseline
