@@ -62,7 +62,7 @@ implementation, bundle it.
 
 | # | Item | Status |
 | --- | --- | --- |
-| D1 | jcode harness reader so jcode sessions and usage appear in the notch agents strip | queued |
+| D1 | jcode harness reader so jcode sessions and usage appear in the notch agents strip | shipped: journal read incrementally while a session runs, session record reduced in place to metadata plus per-message counters once the journal is gone, truncated, corrupt or oversized records skipped and retried only on change, message text, titles and environment snapshots never decoded, jcode card and switch in the agents page. 37 agent checks inside the 2,599-check agents suite and the full 123,680-check suite on the Mac, with the four pre-existing `NotchLevelTrackingTests` click failures reproduced on base `545f69b2` |
 | D2 | herdr session and pane state through the documented contract (`HERDR_*`, `pane.report_agent_session`) | queued |
 | D3 | Multiple OpenCode Go API keys, per-key usage, rotation, secret-safe provisioning | shipped: rotation model, keychain secret store, registry with add/remove ordering, per-key usage counters and provider routes that skip rate-limited, invalid or exhausted keys, masked per-key rows on the AI page, and a secret-free registry file. 77 agent-key checks inside the 123,642-check Mac suite |
 | D4 | Instinct and/or Hermes and other agent integrations for the companion | needs info |
