@@ -51,7 +51,7 @@ extension ClipboardIgnoredTypesStrings {
         listTitle: "Atlanacak pano türleri",
         addButton: "Tür ekle…",
         removeButton: "Kaldır",
-        caption: "Bu türlerden birini taşıyan kopyalar asla kaydedilmez. Evrensel Pano'yu atlamak için com.apple.is-remote-clipboard ekleyin ya da parola yöneticinizin yazdığı türü ekleyin."
+        caption: "Bu türlerden birini taşıyan kopyalar asla kaydedilmez. Evrensel Pano’yu atlamak için com.apple.is-remote-clipboard ekleyin ya da parola yöneticinizin yazdığı türü ekleyin."
     )
 
     static let ru = ClipboardIgnoredTypesStrings(
