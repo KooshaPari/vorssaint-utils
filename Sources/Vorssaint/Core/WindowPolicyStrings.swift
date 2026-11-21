@@ -135,7 +135,7 @@ extension WindowPolicyStrings {
         layout: "Disposition",
         tileNow: "Disposer maintenant",
         caption: "Seules les fenêtres ordinaires déplaçables sont réorganisées. Celles au-delà des emplacements restent en place.",
-        resultFormat: "Fenêtres déplacées : %d",
+        resultFormat: "Fenêtres déplacées\u{00A0}: %d",
         limit: "Limite de fenêtres",
         overflowBehavior: "Fenêtres au-delà de la limite",
         leaveInPlace: "Laisser en place",
