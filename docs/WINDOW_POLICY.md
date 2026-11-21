@@ -17,11 +17,14 @@ windows. The only "tiling" in the code is edge snapping.
    Given a window count, a layout and the visible frame, decide the slot frames
    and which windows overflow. No Accessibility, no windows, no screen, so it is
    unit tested directly.
-2. **Application layer** (next). An Accessibility pass that enumerates ordinary,
-   movable, resizable windows on the active space, reads their frames, asks the
-   policy for a plan, and applies the frames. Non-standard windows (dialogs,
-   sheets, system UI, windows that refuse to move) are left alone.
-3. **Settings** (after that). Layout choice (halves, thirds, quarters), the cap,
+2. **Application layer** (`WindowPolicyAccessibility.swift`, landed for one app
+   at a time). It enumerates the windows Accessibility reports for a process,
+   builds `WindowPolicyWindow` values from subrole, attribute settability, sheet
+   state and minimized state, filters them through `WindowPolicyEligibility`,
+   asks the policy for a plan and writes position then size. `tileFrontmostApp`
+   is the first entry point; spanning every app on a space comes after the
+   setting exists.
+3. **Settings** (next). Layout choice (halves, thirds, quarters), the cap,
    the overflow rule, a gap, and a hotkey to tile now. Off by default, like every
    other feature.
 
