@@ -13,6 +13,8 @@ final class WindowPolicyService: ObservableObject {
     /// How many windows the last request actually moved, or nil before the
     /// first one.
     @Published private(set) var lastMovedCount: Int?
+    /// Minimized windows collapsed by app, refreshed on demand. Read only.
+    @Published private(set) var minimizedGroups: [MinimizedWindowGroup] = []
 
     private init() {}
 
@@ -29,5 +31,11 @@ final class WindowPolicyService: ObservableObject {
                                                                    limit: limit,
                                                                    overflow: overflow,
                                                                    gap: gap)
+    }
+
+    /// Recomputes the grouped view of minimized windows. Nothing is moved,
+    /// restored or reordered by this.
+    func refreshMinimizedGroups() {
+        minimizedGroups = MinimizedWindowGrouping.groups(WindowPolicyAccessibility.minimizedWindows())
     }
 }

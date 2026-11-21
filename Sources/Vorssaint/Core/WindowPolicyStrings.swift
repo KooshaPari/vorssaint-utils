@@ -12,6 +12,7 @@ struct WindowPolicyStrings {
     let limit: String
     let overflowBehavior: String
     let leaveInPlace: String
+    let minimizedSummaryFormat: String
 }
 
 extension FeatureStrings {
@@ -45,7 +46,8 @@ extension WindowPolicyStrings {
         resultFormat: "Moved %d windows",
         limit: "Window limit",
         overflowBehavior: "Windows past the limit",
-        leaveInPlace: "Leave in place"
+        leaveInPlace: "Leave in place",
+        minimizedSummaryFormat: "%d minimized windows in %d apps"
     )
 
     static let ptBR = WindowPolicyStrings(
@@ -56,7 +58,8 @@ extension WindowPolicyStrings {
         resultFormat: "%d janelas movidas",
         limit: "Limite de janelas",
         overflowBehavior: "Janelas além do limite",
-        leaveInPlace: "Deixar como estão"
+        leaveInPlace: "Deixar como estão",
+        minimizedSummaryFormat: "%d janelas minimizadas em %d apps"
     )
 
     static let tr = WindowPolicyStrings(
@@ -67,7 +70,8 @@ extension WindowPolicyStrings {
         resultFormat: "%d pencere taşındı",
         limit: "Pencere sınırı",
         overflowBehavior: "Sınırı aşan pencereler",
-        leaveInPlace: "Olduğu gibi bırak"
+        leaveInPlace: "Olduğu gibi bırak",
+        minimizedSummaryFormat: "%d uygulamada %d simge durumunda pencere"
     )
 
     static let ru = WindowPolicyStrings(
@@ -78,7 +82,8 @@ extension WindowPolicyStrings {
         resultFormat: "Перемещено окон: %d",
         limit: "Предел окон",
         overflowBehavior: "Окна сверх предела",
-        leaveInPlace: "Оставить на месте"
+        leaveInPlace: "Оставить на месте",
+        minimizedSummaryFormat: "Свёрнутых окон: %d, приложений: %d"
     )
 
     static let es = WindowPolicyStrings(
@@ -89,7 +94,8 @@ extension WindowPolicyStrings {
         resultFormat: "Ventanas movidas: %d",
         limit: "Límite de ventanas",
         overflowBehavior: "Ventanas por encima del límite",
-        leaveInPlace: "Dejar como están"
+        leaveInPlace: "Dejar como están",
+        minimizedSummaryFormat: "%d ventanas minimizadas en %d apps"
     )
 
     static let sk = WindowPolicyStrings(
@@ -100,7 +106,8 @@ extension WindowPolicyStrings {
         resultFormat: "Presunutých okien: %d",
         limit: "Limit okien",
         overflowBehavior: "Okná nad limit",
-        leaveInPlace: "Nechať tak, ako sú"
+        leaveInPlace: "Nechať tak, ako sú",
+        minimizedSummaryFormat: "%d minimalizovaných okien v %d aplikáciách"
     )
 
     static let de = WindowPolicyStrings(
@@ -111,7 +118,8 @@ extension WindowPolicyStrings {
         resultFormat: "Fenster verschoben: %d",
         limit: "Fensterlimit",
         overflowBehavior: "Fenster über dem Limit",
-        leaveInPlace: "An Ort und Stelle lassen"
+        leaveInPlace: "An Ort und Stelle lassen",
+        minimizedSummaryFormat: "%d minimierte Fenster in %d Apps"
     )
 
     static let fr = WindowPolicyStrings(
@@ -122,7 +130,8 @@ extension WindowPolicyStrings {
         resultFormat: "Fenêtres déplacées : %d",
         limit: "Limite de fenêtres",
         overflowBehavior: "Fenêtres au-delà de la limite",
-        leaveInPlace: "Laisser en place"
+        leaveInPlace: "Laisser en place",
+        minimizedSummaryFormat: "%d fenêtres réduites dans %d apps"
     )
 
     static let it = WindowPolicyStrings(
@@ -133,7 +142,8 @@ extension WindowPolicyStrings {
         resultFormat: "Finestre spostate: %d",
         limit: "Limite finestre",
         overflowBehavior: "Finestre oltre il limite",
-        leaveInPlace: "Lascia dove sono"
+        leaveInPlace: "Lascia dove sono",
+        minimizedSummaryFormat: "%d finestre ridotte in %d app"
     )
 
     static let ja = WindowPolicyStrings(
@@ -144,7 +154,8 @@ extension WindowPolicyStrings {
         resultFormat: "%d 個のウインドウを移動しました",
         limit: "ウインドウの上限",
         overflowBehavior: "上限を超えたウインドウ",
-        leaveInPlace: "そのままにする"
+        leaveInPlace: "そのままにする",
+        minimizedSummaryFormat: "%d 個のウインドウが %d 個のアプリで最小化"
     )
 
     static let ko = WindowPolicyStrings(
@@ -155,7 +166,8 @@ extension WindowPolicyStrings {
         resultFormat: "%d개 창 이동됨",
         limit: "창 제한",
         overflowBehavior: "제한을 넘는 창",
-        leaveInPlace: "그대로 두기"
+        leaveInPlace: "그대로 두기",
+        minimizedSummaryFormat: "%d개 앱에 최소화된 창 %d개"
     )
 
     static let zhHans = WindowPolicyStrings(
@@ -166,7 +178,8 @@ extension WindowPolicyStrings {
         resultFormat: "已移动 %d 个窗口",
         limit: "窗口上限",
         overflowBehavior: "超出上限的窗口",
-        leaveInPlace: "保持不动"
+        leaveInPlace: "保持不动",
+        minimizedSummaryFormat: "%d 个窗口在 %d 个应用中已最小化"
     )
 
     static let zhTW = WindowPolicyStrings(
@@ -177,7 +190,8 @@ extension WindowPolicyStrings {
         resultFormat: "已移動 %d 個視窗",
         limit: "視窗上限",
         overflowBehavior: "超出上限的視窗",
-        leaveInPlace: "維持不動"
+        leaveInPlace: "維持不動",
+        minimizedSummaryFormat: "%d 個視窗在 %d 個應用程式中已最小化"
     )
 
     static let zhHK = WindowPolicyStrings(
@@ -188,7 +202,8 @@ extension WindowPolicyStrings {
         resultFormat: "已移動 %d 個視窗",
         limit: "視窗上限",
         overflowBehavior: "超出上限的視窗",
-        leaveInPlace: "維持不動"
+        leaveInPlace: "維持不動",
+        minimizedSummaryFormat: "%d 個視窗在 %d 個應用程式中已最小化"
     )
 
     static let uk = WindowPolicyStrings(
@@ -199,6 +214,7 @@ extension WindowPolicyStrings {
         resultFormat: "Переміщено вікон: %d",
         limit: "Межа вікон",
         overflowBehavior: "Вікна понад межу",
-        leaveInPlace: "Залишити на місці"
+        leaveInPlace: "Залишити на місці",
+        minimizedSummaryFormat: "Згорнутих вікон: %d, програм: %d"
     )
 }

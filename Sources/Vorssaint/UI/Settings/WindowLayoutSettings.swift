@@ -87,8 +87,16 @@ struct WindowLayoutSettings: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        if !policy.minimizedGroups.isEmpty {
+                            Text(String(format: policyText.minimizedSummaryFormat,
+                                        policy.minimizedGroups.reduce(0) { $0 + $1.count },
+                                        policy.minimizedGroups.count))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
+                .onAppear { policy.refreshMinimizedGroups() }
             }
 
             if !permissions.accessibility {

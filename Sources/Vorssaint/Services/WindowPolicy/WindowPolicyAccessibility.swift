@@ -111,6 +111,27 @@ enum WindowPolicyAccessibility {
         return CGRect(origin: origin, size: size)
     }
 
+    /// Every minimized window of every regular app, as input for grouping. Read
+    /// only: nothing here moves, restores or reorders a window.
+    static func minimizedWindows() -> [MinimizedWindowInfo] {
+        guard AXIsProcessTrusted() else { return [] }
+        var result: [MinimizedWindowInfo] = []
+        for app in NSWorkspace.shared.runningApplications
+        where app.activationPolicy == .regular && !app.isTerminated {
+            guard let bundleID = app.bundleIdentifier else { continue }
+            let application = AXUIElementCreateApplication(app.processIdentifier)
+            AXUIElementSetMessagingTimeout(application, 0.4)
+            guard let windows = array(kAXWindowsAttribute, from: application) else { continue }
+            for element in windows {
+                guard bool(kAXMinimizedAttribute, from: element) == true else { continue }
+                result.append(MinimizedWindowInfo(id: Int(CFHash(element)),
+                                                  appBundleID: bundleID,
+                                                  isPinned: false))
+            }
+        }
+        return result
+    }
+
     private static func pointAttribute(_ element: AXUIElement, _ name: String) -> CGPoint? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success,
