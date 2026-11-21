@@ -106,6 +106,23 @@ enum WindowPolicyTests {
                      "only pinned windows means nothing to group")
         suite.expect(MinimizedWindowGrouping.groups([]).isEmpty,
                      "no minimized windows means no groups")
+
+        func dockItem(_ app: String, pinned: Bool = false, count: Int) -> DockItemInfo {
+            DockItemInfo(bundleID: app, isPinnedInDock: pinned, minimizedWindowCount: count)
+        }
+
+        let dockGroups = DockItemGrouping.groups([
+            dockItem("com.apple.Safari", count: 2),
+            dockItem("com.apple.Preview", pinned: true, count: 3),
+            dockItem("com.apple.Notes", count: 0),
+            dockItem("com.apple.Safari", count: 1),
+        ])
+        suite.expect(dockGroups.map(\.bundleID) == ["com.apple.Safari"],
+                     "pinned and window-less apps stay out of the dock groups")
+        suite.expect(dockGroups.first?.minimizedWindowCount == 3,
+                     "repeated app entries are summed")
+        suite.expect(DockItemGrouping.groups([]).isEmpty,
+                     "no dock items means no groups")
     }
 
     private static func close(_ first: CGFloat, _ second: CGFloat) -> Bool {

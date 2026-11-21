@@ -32,10 +32,11 @@ Reference: `docs/CLIPBOARD_MACCY_PARITY.md`.
 | B1 | Smart auto tiling of floating windows, definable layouts | shipped: pure policy, eligibility filter, Accessibility layer, opt-in setting with Tile now |
 | B2 | Per-desktop window cap; overflow logic: new desktop, minimize, or other policy | shipped for limit plus leave/minimize; new desktop is not offered because Accessibility has no supported call for it |
 | B3 | Smart grouping of windows minimized but not pinned | shipped: grouping model, cross-app reader, and a count in the window policy section |
-| B4 | Same grouping for dock items where Vorssaint does not already provide it | queued |
+| B4 | Same grouping for dock items where Vorssaint does not already provide it | shipped read-only: pinned Dock apps are read from the Dock domain, unpinned apps with minimized windows are counted. No Dock icon is changed |
 
-Today the only tiling is edge snapping inside `windowLayout`. No auto-tiler, no
-declutter policy, no dock grouping. B1 to B4 are one subsystem, shipped together.
+Before this work the only tiling was edge snapping inside `windowLayout`. The
+policy engine, the opt-in action, the cap with its overflow rule, and read-only
+grouping for minimized windows and dock items are now in place and tested.
 
 ## C. Superset targets for other tools
 

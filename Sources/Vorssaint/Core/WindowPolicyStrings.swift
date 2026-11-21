@@ -13,6 +13,7 @@ struct WindowPolicyStrings {
     let overflowBehavior: String
     let leaveInPlace: String
     let minimizedSummaryFormat: String
+    let dockSummaryFormat: String
 }
 
 extension FeatureStrings {
@@ -47,7 +48,8 @@ extension WindowPolicyStrings {
         limit: "Window limit",
         overflowBehavior: "Windows past the limit",
         leaveInPlace: "Leave in place",
-        minimizedSummaryFormat: "%d minimized windows in %d apps"
+        minimizedSummaryFormat: "%d minimized windows in %d apps",
+        dockSummaryFormat: "%d apps with minimized windows are not in the Dock"
     )
 
     static let ptBR = WindowPolicyStrings(
@@ -59,7 +61,8 @@ extension WindowPolicyStrings {
         limit: "Limite de janelas",
         overflowBehavior: "Janelas além do limite",
         leaveInPlace: "Deixar como estão",
-        minimizedSummaryFormat: "%d janelas minimizadas em %d apps"
+        minimizedSummaryFormat: "%d janelas minimizadas em %d apps",
+        dockSummaryFormat: "%d apps com janelas minimizadas não estão no Dock"
     )
 
     static let tr = WindowPolicyStrings(
@@ -71,7 +74,8 @@ extension WindowPolicyStrings {
         limit: "Pencere sınırı",
         overflowBehavior: "Sınırı aşan pencereler",
         leaveInPlace: "Olduğu gibi bırak",
-        minimizedSummaryFormat: "%d uygulamada %d simge durumunda pencere"
+        minimizedSummaryFormat: "%d uygulamada %d simge durumunda pencere",
+        dockSummaryFormat: "%d uygulamanın simge durumunda penceresi Dock’ta değil"
     )
 
     static let ru = WindowPolicyStrings(
@@ -83,7 +87,8 @@ extension WindowPolicyStrings {
         limit: "Предел окон",
         overflowBehavior: "Окна сверх предела",
         leaveInPlace: "Оставить на месте",
-        minimizedSummaryFormat: "Свёрнутых окон: %d, приложений: %d"
+        minimizedSummaryFormat: "Свёрнутых окон: %d, приложений: %d",
+        dockSummaryFormat: "Приложений со свёрнутыми окнами вне Dock: %d"
     )
 
     static let es = WindowPolicyStrings(
@@ -95,7 +100,8 @@ extension WindowPolicyStrings {
         limit: "Límite de ventanas",
         overflowBehavior: "Ventanas por encima del límite",
         leaveInPlace: "Dejar como están",
-        minimizedSummaryFormat: "%d ventanas minimizadas en %d apps"
+        minimizedSummaryFormat: "%d ventanas minimizadas en %d apps",
+        dockSummaryFormat: "%d apps con ventanas minimizadas no están en el Dock"
     )
 
     static let sk = WindowPolicyStrings(
@@ -107,7 +113,8 @@ extension WindowPolicyStrings {
         limit: "Limit okien",
         overflowBehavior: "Okná nad limit",
         leaveInPlace: "Nechať tak, ako sú",
-        minimizedSummaryFormat: "%d minimalizovaných okien v %d aplikáciách"
+        minimizedSummaryFormat: "%d minimalizovaných okien v %d aplikáciách",
+        dockSummaryFormat: "%d aplikácií s minimalizovanými oknami nie je v Docku"
     )
 
     static let de = WindowPolicyStrings(
@@ -119,7 +126,8 @@ extension WindowPolicyStrings {
         limit: "Fensterlimit",
         overflowBehavior: "Fenster über dem Limit",
         leaveInPlace: "An Ort und Stelle lassen",
-        minimizedSummaryFormat: "%d minimierte Fenster in %d Apps"
+        minimizedSummaryFormat: "%d minimierte Fenster in %d Apps",
+        dockSummaryFormat: "%d Apps mit minimierten Fenstern sind nicht im Dock"
     )
 
     static let fr = WindowPolicyStrings(
@@ -131,7 +139,8 @@ extension WindowPolicyStrings {
         limit: "Limite de fenêtres",
         overflowBehavior: "Fenêtres au-delà de la limite",
         leaveInPlace: "Laisser en place",
-        minimizedSummaryFormat: "%d fenêtres réduites dans %d apps"
+        minimizedSummaryFormat: "%d fenêtres réduites dans %d apps",
+        dockSummaryFormat: "%d apps avec des fenêtres réduites ne sont pas dans le Dock"
     )
 
     static let it = WindowPolicyStrings(
@@ -143,7 +152,8 @@ extension WindowPolicyStrings {
         limit: "Limite finestre",
         overflowBehavior: "Finestre oltre il limite",
         leaveInPlace: "Lascia dove sono",
-        minimizedSummaryFormat: "%d finestre ridotte in %d app"
+        minimizedSummaryFormat: "%d finestre ridotte in %d app",
+        dockSummaryFormat: "%d app con finestre ridotte non sono nel Dock"
     )
 
     static let ja = WindowPolicyStrings(
@@ -155,7 +165,8 @@ extension WindowPolicyStrings {
         limit: "ウインドウの上限",
         overflowBehavior: "上限を超えたウインドウ",
         leaveInPlace: "そのままにする",
-        minimizedSummaryFormat: "%d 個のウインドウが %d 個のアプリで最小化"
+        minimizedSummaryFormat: "%d 個のウインドウが %d 個のアプリで最小化",
+        dockSummaryFormat: "最小化したウインドウがあるアプリのうち %d 個が Dock にありません"
     )
 
     static let ko = WindowPolicyStrings(
@@ -167,7 +178,8 @@ extension WindowPolicyStrings {
         limit: "창 제한",
         overflowBehavior: "제한을 넘는 창",
         leaveInPlace: "그대로 두기",
-        minimizedSummaryFormat: "%d개 앱에 최소화된 창 %d개"
+        minimizedSummaryFormat: "%d개 앱에 최소화된 창 %d개",
+        dockSummaryFormat: "최소화된 창이 있는 앱 %d개가 Dock에 없습니다"
     )
 
     static let zhHans = WindowPolicyStrings(
@@ -179,7 +191,8 @@ extension WindowPolicyStrings {
         limit: "窗口上限",
         overflowBehavior: "超出上限的窗口",
         leaveInPlace: "保持不动",
-        minimizedSummaryFormat: "%d 个窗口在 %d 个应用中已最小化"
+        minimizedSummaryFormat: "%d 个窗口在 %d 个应用中已最小化",
+        dockSummaryFormat: "%d 个有最小化窗口的应用不在 Dock 中"
     )
 
     static let zhTW = WindowPolicyStrings(
@@ -191,7 +204,8 @@ extension WindowPolicyStrings {
         limit: "視窗上限",
         overflowBehavior: "超出上限的視窗",
         leaveInPlace: "維持不動",
-        minimizedSummaryFormat: "%d 個視窗在 %d 個應用程式中已最小化"
+        minimizedSummaryFormat: "%d 個視窗在 %d 個應用程式中已最小化",
+        dockSummaryFormat: "%d 個有最小化視窗的應用程式不在 Dock 中"
     )
 
     static let zhHK = WindowPolicyStrings(
@@ -203,7 +217,8 @@ extension WindowPolicyStrings {
         limit: "視窗上限",
         overflowBehavior: "超出上限的視窗",
         leaveInPlace: "維持不動",
-        minimizedSummaryFormat: "%d 個視窗在 %d 個應用程式中已最小化"
+        minimizedSummaryFormat: "%d 個視窗在 %d 個應用程式中已最小化",
+        dockSummaryFormat: "%d 個有最小化視窗的應用程式不在 Dock 中"
     )
 
     static let uk = WindowPolicyStrings(
@@ -215,6 +230,7 @@ extension WindowPolicyStrings {
         limit: "Межа вікон",
         overflowBehavior: "Вікна понад межу",
         leaveInPlace: "Залишити на місці",
-        minimizedSummaryFormat: "Згорнутих вікон: %d, програм: %d"
+        minimizedSummaryFormat: "Згорнутих вікон: %d, програм: %d",
+        dockSummaryFormat: "Програм із згорнутими вікнами поза Dock: %d"
     )
 }

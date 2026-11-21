@@ -72,6 +72,40 @@ enum MinimizedWindowGrouping {
     }
 }
 
+/// One Dock item as the grouping model sees it.
+struct DockItemInfo: Equatable {
+    let bundleID: String
+    let isPinnedInDock: Bool
+    let minimizedWindowCount: Int
+}
+
+/// An app whose minimized windows are not represented by a pinned Dock icon.
+struct DockItemGroup: Equatable {
+    let bundleID: String
+    let minimizedWindowCount: Int
+}
+
+enum DockItemGrouping {
+    /// Apps with minimized windows that are not pinned in the Dock. Pinned apps
+    /// are left alone: the person put them there on purpose. Duplicate entries
+    /// for one app are summed, and the order given is kept.
+    static func groups(_ items: [DockItemInfo]) -> [DockItemGroup] {
+        var order: [String] = []
+        var counts: [String: Int] = [:]
+        for item in items where !item.isPinnedInDock && item.minimizedWindowCount > 0 {
+            if counts[item.bundleID] == nil {
+                order.append(item.bundleID)
+                counts[item.bundleID] = 0
+            }
+            counts[item.bundleID, default: 0] += item.minimizedWindowCount
+        }
+        return order.compactMap { bundleID in
+            guard let count = counts[bundleID], count > 0 else { return nil }
+            return DockItemGroup(bundleID: bundleID, minimizedWindowCount: count)
+        }
+    }
+}
+
 /// What the policy knows about one window before deciding anything. A value
 /// type on purpose: the Accessibility controller fills it from AX attributes,
 /// and the filter below is then testable without a window server.

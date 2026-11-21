@@ -94,6 +94,11 @@ struct WindowLayoutSettings: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        if !policy.dockGroups.isEmpty {
+                            Text(String(format: policyText.dockSummaryFormat, policy.dockGroups.count))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 .onAppear { policy.refreshMinimizedGroups() }
