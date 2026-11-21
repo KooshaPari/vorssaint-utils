@@ -885,14 +885,6 @@ final class ClipboardHistoryService: ObservableObject {
                 read: result.changeCount, since: sinceChangeCount, last: self.lastChangeCount
             ) else { return }
             self.lastChangeCount = accepted
-            // A one-shot skip consumes the first copy it sees and then gets out
-            // of the way. The preview goes blank with it, since the copy it was
-            // showing is no longer the current one.
-            if UserDefaults.standard.bool(forKey: DefaultsKey.clipboardHistorySkipNext) {
-                UserDefaults.standard.set(false, forKey: DefaultsKey.clipboardHistorySkipNext)
-                self.latestPasteboardEntry = nil
-                return
-            }
             // A restarted pasteboard server cannot finish an old restore.
             let advanced = result.changeCount > sinceChangeCount
             let previous = advanced ? self.latestPasteboardEntry : nil
@@ -973,6 +965,13 @@ final class ClipboardHistoryService: ObservableObject {
         // Types the user listed as never worth keeping: a password manager's
         // own mark, or Universal Clipboard's, which Maccy exposes the same way.
         if ClipboardIgnoredPasteboardTypes.shared.matches(types) { return nil }
+        // A one-shot skip consumes the next real read and then clears itself.
+        // It sits here, beside the other reasons a copy is not kept, so the
+        // capture closure downstream never has to know about it.
+        if UserDefaults.standard.bool(forKey: DefaultsKey.clipboardHistorySkipNext) {
+            UserDefaults.standard.set(false, forKey: DefaultsKey.clipboardHistorySkipNext)
+            return nil
+        }
         // Files first: a Finder copy also carries name strings, and a browser
         // image copy also carries URL text, so richer content wins over its
         // own textual fallbacks.
