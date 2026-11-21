@@ -8,6 +8,7 @@ struct WindowLayoutSettings: View {
     @ObservedObject private var permissions = Permissions.shared
     @ObservedObject private var features = FeatureRuntime.shared
     @ObservedObject private var service = WindowLayoutService.shared
+    @ObservedObject private var policy = WindowPolicyService.shared
     @ObservedObject private var maximizer = WindowMaximizer.shared
     @AppStorage(DefaultsKey.windowMaximizeEnabled) private var maximizeEnabled = false
     @ObservedObject private var pointerDisplay = PointerDisplayService.shared
@@ -34,9 +35,16 @@ struct WindowLayoutSettings: View {
     // mirrored here because it is a window-juggling behavior people look for
     // on this page too.
     @AppStorage(DefaultsKey.dockClickCycleWindows) private var dockClickCycleWindows = false
+    @AppStorage(DefaultsKey.windowPolicyEnabled) private var policyEnabled = false
+    @AppStorage(DefaultsKey.windowPolicyLayout)
+    private var policyLayout = WindowTileLayout.quarters.rawValue
 
     private var text: WindowLayoutFeatureStrings {
         FeatureStrings.windowLayout(l10n.language)
+    }
+
+    private var policyText: WindowPolicyStrings {
+        FeatureStrings.windowPolicy(l10n.language)
     }
 
     var body: some View {
@@ -50,6 +58,26 @@ struct WindowLayoutSettings: View {
                     Label(text.permissionCaption, systemImage: "hand.raised")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                Section {
+                    Toggle(policyText.enabled, isOn: $policyEnabled)
+                    if policyEnabled {
+                        Picker(policyText.layout, selection: $policyLayout) {
+                            ForEach(WindowTileLayout.allCases, id: \.self) { layout in
+                                Text(layout.rawValue.capitalized).tag(layout.rawValue)
+                            }
+                        }
+                        Button(policyText.tileNow) { policy.tileNow() }
+                        Text(policyText.caption)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if let moved = policy.lastMovedCount {
+                            Text(String(format: policyText.resultFormat, moved))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
 

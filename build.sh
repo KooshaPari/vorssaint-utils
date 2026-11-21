@@ -509,6 +509,7 @@ if (( TEST )); then
         Sources/Vorssaint/Core/ClipboardIgnoredTypesStrings.swift
         Sources/Vorssaint/Core/ClipboardSkipStrings.swift
         Sources/Vorssaint/Core/ClipboardExtrasStrings.swift
+        Sources/Vorssaint/Core/WindowPolicyStrings.swift
         Sources/Vorssaint/Services/Clipboard/ClipboardIgnoredPasteboardTypes.swift
         Sources/Vorssaint/Core/ClipboardRetentionStrings.swift
         Sources/Vorssaint/Core/WindowLayoutIgnoredAppsStrings.swift
@@ -593,6 +594,7 @@ if (( TEST )); then
         Sources/Vorssaint/Services/WindowLayout/WindowLayoutSupport.swift
         Sources/Vorssaint/Services/WindowPolicy/WindowPolicySupport.swift
         Sources/Vorssaint/Services/WindowPolicy/WindowPolicyAccessibility.swift
+        Sources/Vorssaint/Services/WindowPolicy/WindowPolicyService.swift
         Sources/Vorssaint/Services/WindowLayout/WindowStageManagerSupport.swift
         Sources/Vorssaint/Core/WindowStageManagerStrings.swift
         Sources/Vorssaint/Core/WindowEdgeSnapRestoreStrings.swift

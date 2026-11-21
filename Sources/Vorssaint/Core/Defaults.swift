@@ -538,6 +538,8 @@ enum DefaultsKey {
     static let windowLayoutMarginPercent = "windowLayoutMarginPercent" // per-edge percentage for margin maximize
     static let windowLayoutSideRepeatCyclesThirds = "windowLayoutSideRepeatCyclesThirds" // repeated Left/Right cycles half, 2/3, 1/3 on the same display
     static let windowLayoutIgnoredApps = "windowLayoutIgnoredApps" // apps that temporarily disable window layout while focused
+    static let windowPolicyEnabled = "windowPolicyEnabled" // opt-in automatic tiling
+    static let windowPolicyLayout = "windowPolicyLayout" // halves | thirds | quarters
     static let panelCollapsedSections = "panelCollapsedSections"
     static let panelCollapsedResetVersion = "panelCollapsedResetVersion"
 
@@ -1848,6 +1850,8 @@ enum Defaults {
         DefaultsKey.clipboardHistoryIgnoredApps: [String](),
         DefaultsKey.clipboardHistoryIgnoredPasteboardTypes: [String](),
         DefaultsKey.windowLayoutIgnoredApps: [String](),
+        DefaultsKey.windowPolicyEnabled: false,
+        DefaultsKey.windowPolicyLayout: WindowTileLayout.quarters.rawValue,
         DefaultsKey.clipboardHistoryQuickPreview: false,
         DefaultsKey.clipboardHistoryShowSourceAppIcons: false,
         DefaultsKey.clipboardHistoryLayout: ClipboardHistoryLayout.list.rawValue,
