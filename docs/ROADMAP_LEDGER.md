@@ -64,7 +64,7 @@ implementation, bundle it.
 | --- | --- | --- |
 | D1 | jcode harness reader so jcode sessions and usage appear in the notch agents strip | queued |
 | D2 | herdr session and pane state through the documented contract (`HERDR_*`, `pane.report_agent_session`) | queued |
-| D3 | Multiple OpenCode Go API keys, per-key usage, rotation, secret-safe provisioning | queued |
+| D3 | Multiple OpenCode Go API keys, per-key usage, rotation, secret-safe provisioning | wip: `AgentKeyPool` rotation model with masked rows and tests; keychain storage and provider wiring next |
 | D4 | Instinct and/or Hermes and other agent integrations for the companion | needs info |
 | D5 | Subscription or API key for the companion to use | needs info |
 | D6 | "Vorssaint dots" | needs info: exact meaning not yet known |

@@ -33,6 +33,9 @@ struct MetricsTests {
             ("hidden-preferences", {
                 HiddenPreferenceTests.run(suite)
             }),
+            ("agent-keys", {
+                AgentKeyPoolTests.run(suite)
+            }),
             ("pointer-input", {
                 PointerOnDisplayContract.run(suite)
                 PointerInputFeatureTests.run(suite)
