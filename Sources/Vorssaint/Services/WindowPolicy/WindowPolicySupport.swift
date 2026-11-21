@@ -30,6 +30,38 @@ struct WindowPolicyPlan: Equatable {
     var tiledCount: Int { frames.count }
 }
 
+/// What the policy knows about one window before deciding anything. A value
+/// type on purpose: the Accessibility controller fills it from AX attributes,
+/// and the filter below is then testable without a window server.
+struct WindowPolicyWindow: Equatable {
+    let id: Int
+    /// AX reports `AXStandardWindow` for the windows a person thinks of as a
+    /// window. Palettes, sheets, popovers and system surfaces are not.
+    let isStandard: Bool
+    let isMovable: Bool
+    let isResizable: Bool
+    /// A modal sheet belongs to its parent; moving the parent breaks the sheet.
+    let hasSheet: Bool
+    let isMinimized: Bool
+    let layer: Int
+}
+
+enum WindowPolicyEligibility {
+    /// The windows a policy may touch, in the order given. Everything that is
+    /// not an ordinary, movable, resizable, unminimized window in the normal
+    /// layer is left exactly where it is.
+    static func eligible(_ windows: [WindowPolicyWindow]) -> [WindowPolicyWindow] {
+        windows.filter { window in
+            window.isStandard
+                && window.isMovable
+                && window.isResizable
+                && !window.hasSheet
+                && !window.isMinimized
+                && window.layer == 0
+        }
+    }
+}
+
 enum WindowPolicy {
     static func grid(for layout: WindowTileLayout) -> WindowTileGrid {
         switch layout {

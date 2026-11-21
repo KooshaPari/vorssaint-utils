@@ -59,6 +59,31 @@ enum WindowPolicyTests {
         let degenerate = WindowPolicy.slots(WindowPolicy.grid(for: .halves),
                                             in: CGRect(x: 0, y: 0, width: 0, height: 0))
         suite.expect(degenerate.isEmpty, "a zero sized screen offers no slots")
+
+        func window(_ id: Int,
+                    standard: Bool = true,
+                    movable: Bool = true,
+                    resizable: Bool = true,
+                    sheet: Bool = false,
+                    minimized: Bool = false,
+                    layer: Int = 0) -> WindowPolicyWindow {
+            WindowPolicyWindow(id: id, isStandard: standard, isMovable: movable,
+                               isResizable: resizable, hasSheet: sheet,
+                               isMinimized: minimized, layer: layer)
+        }
+
+        let mixed = [window(1),
+                     window(2, standard: false),
+                     window(3, movable: false),
+                     window(4, resizable: false),
+                     window(5, sheet: true),
+                     window(6, minimized: true),
+                     window(7, layer: 3),
+                     window(8)]
+        suite.expect(WindowPolicyEligibility.eligible(mixed).map(\.id) == [1, 8],
+                     "only ordinary movable resizable windows in the normal layer are eligible")
+        suite.expect(WindowPolicyEligibility.eligible([]).isEmpty,
+                     "no windows means no eligible windows")
     }
 
     private static func close(_ first: CGFloat, _ second: CGFloat) -> Bool {
