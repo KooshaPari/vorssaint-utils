@@ -507,6 +507,7 @@ if (( TEST )); then
         Sources/Vorssaint/Core/MouseExceptionStrings.swift
         Sources/Vorssaint/Core/ClipboardIgnoredAppsStrings.swift
         Sources/Vorssaint/Core/ClipboardIgnoredTypesStrings.swift
+        Sources/Vorssaint/Core/ClipboardSkipStrings.swift
         Sources/Vorssaint/Services/Clipboard/ClipboardIgnoredPasteboardTypes.swift
         Sources/Vorssaint/Core/ClipboardRetentionStrings.swift
         Sources/Vorssaint/Core/WindowLayoutIgnoredAppsStrings.swift

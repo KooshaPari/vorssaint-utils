@@ -158,6 +158,14 @@ final class ClipboardHistoryService: ObservableObject {
         }
     }
 
+    /// Leaves the next copy out of the history and clears the flag on the way
+    /// out, the way Maccy's one-shot ignore works. Read directly from the
+    /// preference in the capture path, which the self-test build slices out of
+    /// this file on its own.
+    func skipNextCopy() {
+        UserDefaults.standard.set(true, forKey: DefaultsKey.clipboardHistorySkipNext)
+    }
+
     /// Skips capturing pasteboard changes up to the given change count. Quick
     /// tools that rewrite the pasteboard transiently (paste as plain text)
     /// use this so their intermediate writes never churn the history.
@@ -877,6 +885,14 @@ final class ClipboardHistoryService: ObservableObject {
                 read: result.changeCount, since: sinceChangeCount, last: self.lastChangeCount
             ) else { return }
             self.lastChangeCount = accepted
+            // A one-shot skip consumes the first copy it sees and then gets out
+            // of the way. The preview goes blank with it, since the copy it was
+            // showing is no longer the current one.
+            if UserDefaults.standard.bool(forKey: DefaultsKey.clipboardHistorySkipNext) {
+                UserDefaults.standard.set(false, forKey: DefaultsKey.clipboardHistorySkipNext)
+                self.latestPasteboardEntry = nil
+                return
+            }
             // A restarted pasteboard server cannot finish an old restore.
             let advanced = result.changeCount > sinceChangeCount
             let previous = advanced ? self.latestPasteboardEntry : nil

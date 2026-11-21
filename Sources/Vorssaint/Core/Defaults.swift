@@ -587,6 +587,7 @@ enum DefaultsKey {
     // Clipboard history — text only, opt-in and local.
     static let clipboardHistoryEnabled = "clipboardHistoryEnabled"
     static let clipboardHistoryPaused = "clipboardHistoryPaused" // paused by the user: copies keep happening, nothing is recorded
+    static let clipboardHistorySkipNext = "clipboardHistorySkipNext" // one-shot: the next copy is left out, then capture resumes
     static let clipboardHistoryEntries = "clipboardHistoryEntries"
     static let clipboardHistoryLimit = "clipboardHistoryLimit"
     static let clipboardHistoryRetentionDays = "clipboardHistoryRetentionDays" // 0 keeps items until the limit drops them
@@ -1837,6 +1838,7 @@ enum Defaults {
         DefaultsKey.mediaTextLanguageCorrection: true,
         DefaultsKey.clipboardHistoryEnabled: false,
         DefaultsKey.clipboardHistoryPaused: false,
+        DefaultsKey.clipboardHistorySkipNext: false,
         DefaultsKey.clipboardHistoryLimit: 50,
         DefaultsKey.clipboardHistoryRetentionDays: 0,
         DefaultsKey.clipboardHistoryFilterSensitiveText: false,

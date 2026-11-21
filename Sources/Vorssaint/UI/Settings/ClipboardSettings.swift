@@ -7,6 +7,7 @@ struct ClipboardSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var features = FeatureRuntime.shared
     @ObservedObject private var history = ClipboardHistoryService.shared
+    @ObservedObject private var ignoredTypes = ClipboardIgnoredPasteboardTypes.shared
     @ObservedObject private var pastePlain = PastePlainService.shared
     @ObservedObject private var permissions = Permissions.shared
     @State private var clearingIDs: [UUID: Date]?
@@ -38,6 +39,28 @@ struct ClipboardSettings: View {
     private var retentionText: ClipboardRetentionStrings {
         FeatureStrings.clipboardRetention(l10n.language)
     }
+
+    private var skipText: ClipboardSkipStrings {
+        FeatureStrings.clipboardSkip(l10n.language)
+    }
+
+    /// Universal Clipboard is one entry in the ignored-types list, so the switch
+    /// adds and removes that entry instead of keeping a second copy of the state
+    /// that could drift out of sync with the list.
+    private var universalClipboardBinding: Binding<Bool> {
+        Binding(
+            get: { ignoredTypes.types.contains(Self.universalClipboardType) },
+            set: { isOn in
+                if isOn {
+                    ignoredTypes.add(Self.universalClipboardType)
+                } else {
+                    ignoredTypes.remove(Self.universalClipboardType)
+                }
+            }
+        )
+    }
+
+    private static let universalClipboardType = "com.apple.is-remote-clipboard"
 
     var body: some View {
         Form {
@@ -79,6 +102,11 @@ struct ClipboardSettings: View {
                         .disabled(!enabled)
                     ClipboardIgnoredTypesList()
                         .disabled(!enabled)
+                    Toggle(skipText.universalClipboard, isOn: universalClipboardBinding)
+                        .disabled(!enabled)
+                    Text(skipText.universalClipboardCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     Picker(text.limit, selection: $limit) {
                         ForEach(Defaults.allowedClipboardHistoryLimits, id: \.self) { value in
                             Text(value == 0 ? text.limitUnlimited : "\(value)").tag(value)

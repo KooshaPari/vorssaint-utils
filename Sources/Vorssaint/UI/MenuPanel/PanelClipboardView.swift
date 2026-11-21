@@ -24,6 +24,10 @@ struct PanelClipboardView: View {
         FeatureStrings.clipboard(l10n.language)
     }
 
+    private var skipText: ClipboardSkipStrings {
+        FeatureStrings.clipboardSkip(l10n.language)
+    }
+
     /// The alert would hang from the island as a sheet; there it asks on its own.
     private func confirmClearAboveIsland(_ ids: [UUID: Date]) {
         let text = text
@@ -127,6 +131,17 @@ struct PanelClipboardView: View {
                 .controlSize(.mini)
                 .help(l10n.s.actionPause)
                 .disabled(!enabled)
+                Button {
+                    history.skipNextCopy()
+                } label: {
+                    Image(systemName: "forward.end")
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 22)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .help(skipText.skipNext)
+                .disabled(!enabled || history.isPaused)
                 Button {
                     history.showHistoryWindow()
                 } label: {
