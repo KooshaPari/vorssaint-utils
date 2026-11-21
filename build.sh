@@ -599,6 +599,8 @@ if (( TEST )); then
         Sources/Vorssaint/Services/HiddenPreferences/HiddenPreferenceCatalog.swift
         Sources/Vorssaint/Services/HiddenPreferences/HiddenPreferenceStore.swift
         Sources/Vorssaint/Services/AgentUsage/AgentKeyPool.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentKeyUsage.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentKeyStore.swift
         Sources/Vorssaint/Services/AgentUsage/AgentSecretStore.swift
         Sources/Vorssaint/Services/AgentUsage/AgentKeyRegistry.swift
         Sources/Vorssaint/Services/WindowLayout/WindowStageManagerSupport.swift

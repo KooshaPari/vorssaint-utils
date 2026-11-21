@@ -63,6 +63,14 @@ struct AgentKeyPool: Equatable {
         cursor = next(after: cursor)?.id ?? cursor
     }
 
+    /// Moves the cursor to a key the caller has just used. An id no longer in
+    /// the pool is ignored, so a route resolved before a removal cannot point
+    /// the pool at a missing key.
+    mutating func select(_ id: UUID) {
+        guard keys.contains(where: { $0.id == id }) else { return }
+        cursor = id
+    }
+
     /// What a settings row may show: one masked label per key, in order.
     var maskedLabels: [String] {
         keys.map { "\($0.label) \($0.masked)" }

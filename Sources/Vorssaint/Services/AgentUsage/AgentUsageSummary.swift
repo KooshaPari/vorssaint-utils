@@ -100,6 +100,9 @@ struct AgentUsageSnapshot: Equatable {
     var lastActivity: [AgentProvider: Date] = [:]
     /// Providers with anything on disk: usage, limits or a turn.
     var seen: Set<AgentProvider> = []
+    /// Per-key counters for saved provider keys, already masked and without
+    /// secrets. Empty until the agents service publishes the registry.
+    var keyUsage: [AgentKeyUsageRow] = []
 
     func usage(_ period: AgentPeriod) -> AgentPeriodUsage { periods[period] ?? AgentPeriodUsage() }
     func working(_ provider: AgentProvider) -> [AgentLiveSession] { live.filter { $0.provider == provider } }

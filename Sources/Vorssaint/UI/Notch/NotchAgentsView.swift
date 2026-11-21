@@ -34,7 +34,8 @@ struct NotchAgentsView: View {
     private var providers: [AgentProvider] {
         [claude ? AgentProvider.claude : nil, codex ? .codex : nil, opencode ? .opencode : nil, copilot ? .copilot : nil].compactMap { $0 }
             .filter { usage.snapshot.seen.contains($0) || ($0 == .codex && !codexAccounts.isEmpty)
-                || ($0 == .claude && !usage.claudeProfile.isDefault) }
+                || ($0 == .claude && !usage.claudeProfile.isDefault)
+                || ($0 == .opencode && !usage.snapshot.keyUsage.isEmpty) }
     }
 
     private var rows: [[NotchAgentTile]] {
@@ -328,9 +329,69 @@ private struct NotchAgentLimitsCard: View {
                     meters(windows)
                     if windows.count == 1 { caption }
                 }
+                // OpenCode Go reports no plan window, so its card shows what
+                // each saved key has spent instead.
+                if provider == .opencode, windows.isEmpty, !keyRows.isEmpty {
+                    keyUsage(now: now)
+                }
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var keyRows: [AgentKeyUsageRow] {
+        provider == .opencode ? snapshot.keyUsage.filter { $0.provider == AgentKeyProvider.openCodeGo } : []
+    }
+
+    /// One compact row per key, masked, with its tokens and requests. Three fit
+    /// the card; the rotator's order is kept, so the next key is the top row.
+    private func keyUsage(now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(keyRows.prefix(3))) { row in
+                let health = row.health.resolved(at: now)
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(keyTint(health))
+                        .frame(width: 4, height: 4)
+                    Text(row.maskedLabel)
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                    Spacer(minLength: 2)
+                    if let symbol = keySymbol(health) {
+                        Image(systemName: symbol)
+                            .font(.system(size: 8))
+                            .foregroundStyle(keyTint(health))
+                    }
+                    Text(AgentFormat.tokens(row.tokens.total))
+                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.75))
+                    Text("\(row.requests)")
+                        .font(.system(size: 9.5, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                }
+                .help("\(row.maskedLabel) · \(AgentFormat.tokens(row.tokens.total)) · \(row.requests)")
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    private func keyTint(_ health: AgentKeyHealth) -> Color {
+        switch health {
+        case .ready: return provider.tint
+        case .rateLimited: return .orange
+        case .invalid, .exhausted: return .red
+        }
+    }
+
+    private func keySymbol(_ health: AgentKeyHealth) -> String? {
+        switch health {
+        case .ready: return nil
+        case .rateLimited: return "clock"
+        case .invalid, .exhausted: return "exclamationmark.triangle.fill"
+        }
     }
 
     private func meters(_ windows: [AgentLimitWindow]) -> some View {
