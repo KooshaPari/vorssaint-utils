@@ -86,6 +86,10 @@ implementation, bundle it.
 
 ## Operator facts recorded
 
+- Lane: **MacMgr** (operator, 2026-11-21). Owns Vorssaint on top of every other
+  tool and piece of infrastructure maintained for the Mac and the general macOS
+  setup, not just this repository.
+
 - Apple Developer account is paid; Developer ID Application (GCT2BN8WLL) is
   installed on the Mac. Headless builds cannot use it because the login keychain
   is locked over SSH, so dev builds pass `VORSSAINT_SKIP_DEVELOPER_ID=1`.
