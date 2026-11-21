@@ -35,9 +35,9 @@ enum WindowPolicyAccessibility {
                 // exactly when the attribute can be written.
                 isMovable: isSettable(kAXPositionAttribute, on: element),
                 isResizable: isSettable(kAXSizeAttribute, on: element),
-                // Sheets are attached children rather than entries in this list,
-                // so an element that has one is reported through its role.
-                hasSheet: array(kAXSheetsAttribute, from: element)?.isEmpty == false,
+                // A window with a sheet attached must not be moved. The SDK
+                // exposes no constant for this attribute; the name is stable.
+                hasSheet: array("AXSheets", from: element)?.isEmpty == false,
                 isMinimized: bool(kAXMinimizedAttribute, from: element) ?? false,
                 layer: 0
             )
