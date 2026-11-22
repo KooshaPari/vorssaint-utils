@@ -94,7 +94,7 @@ struct HerdrProcessRunner: HerdrCommandRunning {
             while process.isRunning && Date() < grace {
                 Thread.sleep(forTimeInterval: 0.02)
             }
-            if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+            if process.isRunning { _ = kill(process.processIdentifier, SIGKILL) }
             process.waitUntilExit()
             _ = finished.wait(timeout: .now() + 0.2)
             return nil
