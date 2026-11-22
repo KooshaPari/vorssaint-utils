@@ -126,13 +126,15 @@ struct AgentKeyLedger: Equatable {
     }
 
     /// Attributes one answered request to the key that made it. A successful
-    /// answer also lifts a rate limit the key has recovered from.
+    /// answer lifts a rate limit the key has recovered from, and nothing else:
+    /// a key the provider rejected or has no allowance left on stays out of
+    /// rotation until the operator resets it or replaces it.
     mutating func record(_ id: UUID, tokens: AgentTokens, requests: Int = 1, at date: Date) {
         var usage = entries[id] ?? AgentKeyUsage(id: id)
         usage.tokens += tokens
         usage.requests += max(0, requests)
         usage.lastUsed = max(usage.lastUsed ?? .distantPast, date)
-        usage.health = .ready
+        if case .rateLimited = usage.health { usage.health = .ready }
         entries[id] = usage
     }
 

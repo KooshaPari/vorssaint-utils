@@ -72,6 +72,18 @@ enum AgentKeyUsageTests {
         suite.expect(ledger.health(personal.id, at: rateLimitedUntil) == .ready,
                      "a successful answer clears a rate limit")
 
+        // Only a rate limit lifts by itself. A rejected or spent key stays out
+        // until it is reset or replaced, even when a request with it answers.
+        ledger.mark(.invalid, for: personal.id, at: now)
+        ledger.record(personal.id, tokens: AgentTokens(output: 1), at: now)
+        suite.expect(ledger.health(personal.id, at: now) == .invalid,
+                     "a successful answer leaves an invalid key invalid")
+        ledger.mark(.exhausted, for: personal.id, at: now)
+        ledger.record(personal.id, tokens: AgentTokens(output: 1), at: now)
+        suite.expect(ledger.health(personal.id, at: now) == .exhausted,
+                     "a successful answer leaves an exhausted key out of credit")
+        ledger.reset(personal.id)
+
         // Status classification keeps server and network faults away from keys.
         suite.expect(AgentKeyFailure.classify(status: 401) == .invalid,
                      "401 marks the key invalid")
@@ -173,6 +185,33 @@ enum AgentKeyUsageTests {
                      "no published row carries key material")
         suite.expect(rows.allSatisfy { $0.maskedLabel.contains("••••") },
                      "every published row is masked")
+
+        // A rejected key stays out of routing even when a request with it
+        // answers: only an explicit reset returns it.
+        let settledStore = InMemoryAgentKeyRegistryStore()
+        let settledRegistry = AgentKeyRegistry(store: InMemoryAgentSecretStore(), registryStore: settledStore)
+        guard let settledWork = settledRegistry.addKey(provider: provider, label: "settled-work",
+                                                       secret: "sk-test-4444"),
+              let settledSpare = settledRegistry.addKey(provider: provider, label: "settled-spare",
+                                                        secret: "sk-test-5555"),
+              let settledRoute = settledRegistry.nextRoute(at: now) else {
+            suite.expect(false, "two health-transition keys are saved")
+            return
+        }
+        let settledRows = settledRegistry.usageRows(at: now)
+        suite.expect(settledRows.count == 2 && settledRows.contains { $0.id == settledSpare.id },
+                     "both health-transition keys are published")
+        suite.expect(settledRegistry.reportFailure(settledRoute, status: 401, at: now),
+                     "the routed key is marked invalid")
+        settledRegistry.record(settledRoute, tokens: AgentTokens(input: 4), at: now)
+        suite.expect(settledRegistry.health(settledRoute.key.id, at: now) == .invalid,
+                     "an answered request does not clear a key that failed auth")
+        suite.expect(settledRegistry.nextRoute(at: now)?.key.id == settledWork.id,
+                     "an invalid key stays out of routing after an answered request")
+        suite.expect(settledRegistry.resetKey(settledRoute.key.id),
+                     "the operator can reset the rejected key")
+        suite.expect(settledRegistry.nextRoute(at: now)?.key.id == settledRoute.key.id,
+                     "an explicit reset returns the rejected key to routing")
 
         // Persistence keeps counters and health, never the secret or its tail.
         let persisted = registryStore.state
