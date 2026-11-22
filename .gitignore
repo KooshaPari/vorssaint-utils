@@ -17,6 +17,13 @@ dist/
 AGENTS.md
 CLAUDE.md
 
+# Local probe dumps: diagnostic output stays in scratch (E:\koosh\Agents\scratch),
+# never at the repo root. The ocgo pool answers /pool and /v1/usage with key
+# values in plaintext, so any captured response is secret material.
+/ERR
+/*pool*.json
+/*usage*.txt
+
 # macOS noise
 .DS_Store
 
