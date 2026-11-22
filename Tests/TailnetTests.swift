@@ -121,8 +121,7 @@ enum TailnetTests {
                         #"{"Peer":{}}"#, #"{"BackendState":"Flying"}"#,
                         #"{"BackendState":7}"#, #"{"BackendState":"Running","Peer":[]}"#,
                         #"{"BackendState":"Running","Peer":{"node-a":"not-a-record"}}"#,
-                        #"{"BackendState":"Running","Peer":{"node-a":{"ID":"node-a","TailscaleIPs":"100.64.0.9"}}}"#,
-                        #"{"BackendState":"Running","Peer":{"node-a":{"ID":"","HostName":"","DNSName":"","TailscaleIPs":["100.64.0.9"]}}}"#] {
+                        #"{"BackendState":"Running","Peer":{"node-a":{"ID":"node-a","TailscaleIPs":"100.64.0.9"}}}"# ] {
             CLI.reset(); CLI.output = payload
             availability = TailnetSupport.availability(cliPath: cli, run: CLI.run)
             suite.expect(availability == .unavailable(.malformedStatus),
@@ -130,6 +129,16 @@ enum TailnetTests {
         }
         suite.expect(TailnetSupport.parseStatus("[]") == .unavailable(.malformedStatus),
                      "a JSON array is not a status object")
+        if case let .live(keyOnly) = TailnetSupport.parseStatus(
+            #"{"BackendState":"Running","Peer":{"node-a":{"ID":"","HostName":"","DNSName":"","TailscaleIPs":["100.64.0.9"]}}}"#) {
+            suite.expect(keyOnly.peers.first?.id == "node-a",
+                         "a peer record with an empty ID still carries its map key as the node identity")
+            suite.expect(TailnetSupport.verifyPeer(address: "100.64.0.9", availability: .live(keyOnly),
+                                                   expectedIdentities: ["node-a"]).isVerified,
+                         "the map-key identity is the one checked for a record without an ID field")
+        } else {
+            suite.expect(false, "a peer addressed by its map key is live")
+        }
 
         // MARK: Live tailnet
 
