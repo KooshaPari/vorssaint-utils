@@ -180,6 +180,7 @@ struct MetricsTests {
                 MonitorVolumeKeySettingsTests.run(suite)
             }),
             ("software-dimming", { SoftwareDimmingRouteTests.run { suite.expect($0, $1) } }),
+            ("flux", { FluxScheduleTests.run(suite) }),
             ("capture", {
                 ScreenshotSelectionRefreshContract.run(suite)
                 ScreenshotCountdownTests.run(suite)
