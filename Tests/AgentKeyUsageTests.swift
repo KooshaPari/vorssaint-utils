@@ -239,6 +239,46 @@ enum AgentKeyUsageTests {
         suite.expect(restored.nextRoute(at: now.addingTimeInterval(300))?.secret == "sk-test-2222",
                      "a restored pool skips the bad key and uses the next one")
 
+        // A saved key whose secret is gone is dropped, and the pruned registry
+        // is written back, so a stale id cannot survive in the file.
+        let keptID = UUID()
+        let orphanID = UUID()
+        let orphanState = AgentKeyRegistryState(
+            keys: [AgentKeyRecord(id: keptID, provider: provider, label: "kept"),
+                   AgentKeyRecord(id: orphanID, provider: provider, label: "orphan")],
+            cursor: orphanID,
+            usages: [AgentKeyUsage(id: keptID), AgentKeyUsage(id: orphanID, requests: 9)])
+        let keptSecrets = InMemoryAgentSecretStore()
+        _ = keptSecrets.set("sk-test-6666", for: keptID)
+        let prunedStore = InMemoryAgentKeyRegistryStore(orphanState)
+        let prunedRegistry = AgentKeyRegistry(store: keptSecrets, registryStore: prunedStore)
+        suite.expect(prunedRegistry.pool.keys.map(\.id) == [keptID],
+                     "a saved key whose secret is gone is not restored")
+        suite.expect(prunedStore.state.keys.map(\.id) == [keptID],
+                     "loading writes back only the keys that still resolve")
+        suite.expect(!prunedStore.state.usages.contains { $0.id == orphanID },
+                     "the pruned key's counters go with it")
+        suite.expect(prunedStore.state.cursor == nil && prunedStore.saves == 1,
+                     "the pruned registry is saved once with no stale cursor")
+
+        // A keychain that cannot be read now is not one that lost the item.
+        // Nothing is pruned while a secret may still be there.
+        final class UnreadableKeychain: AgentSecretStore {
+            private var secrets: [UUID: String]
+            init(_ secrets: [UUID: String]) { self.secrets = secrets }
+            func set(_ secret: String, for id: UUID) -> Bool { secrets[id] = secret; return true }
+            func secret(for id: UUID) -> String? { nil }
+            func isMissing(for id: UUID) -> Bool { false }
+            func remove(for id: UUID) -> Bool { secrets.removeValue(forKey: id) != nil }
+        }
+        let lockedStore = InMemoryAgentKeyRegistryStore(orphanState)
+        let lockedRegistry = AgentKeyRegistry(store: UnreadableKeychain([keptID: "sk-test-6666"]),
+                                              registryStore: lockedStore)
+        suite.expect(lockedRegistry.pool.isEmpty,
+                     "no key is offered while its secret cannot be read")
+        suite.expect(lockedStore.state.keys.count == 2 && lockedStore.saves == 0,
+                     "an unreadable keychain leaves the saved registry untouched")
+
         // Removing a key drops its usage, its secret and its route.
         let removable = restored.pool.keys[2].id
         restored.removeKey(removable)

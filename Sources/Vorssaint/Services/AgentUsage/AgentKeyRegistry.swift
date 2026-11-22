@@ -48,26 +48,41 @@ final class AgentKeyRegistry {
         self.store = store
         self.registryStore = registryStore
         let saved = registryStore.load()
+        var prune = false
         if pool.isEmpty, !saved.keys.isEmpty {
             // The tail is the only part of a key the pool shows, and it is
             // rebuilt from the keychain rather than written to disk.
             var references: [AgentKeyReference] = []
             var restorable = Set<UUID>()
+            var unreadable: [UUID] = []
             for record in saved.keys {
-                guard let secret = store.secret(for: record.id), !secret.isEmpty else { continue }
+                guard let secret = store.secret(for: record.id), !secret.isEmpty else {
+                    unreadable.append(record.id)
+                    continue
+                }
                 references.append(AgentKeyReference(id: record.id, provider: record.provider,
                                                     label: record.label, tail: String(secret.suffix(4))))
                 restorable.insert(record.id)
             }
-            storedPool = AgentKeyPool(keys: references, cursor: saved.cursor.flatMap {
-                restorable.contains($0) ? $0 : nil
-            })
-            ledger = AgentKeyLedger(saved.usages.filter { restorable.contains($0.id) })
+            let cursor = saved.cursor.flatMap { restorable.contains($0) ? $0 : nil }
+            let usages = saved.usages.filter { restorable.contains($0.id) }
+            storedPool = AgentKeyPool(keys: references, cursor: cursor)
+            ledger = AgentKeyLedger(usages)
+            // A record whose secret is gone cannot be used, and leaving it in
+            // the file would keep a key id no launch can resolve. Write the
+            // pruned state back, but only when every dropped record is
+            // affirmatively missing: an unreadable keychain must not delete a
+            // key that still exists.
+            prune = (references.count != saved.keys.count
+                     || usages.count != saved.usages.count
+                     || (saved.cursor != nil && cursor == nil))
+                    && unreadable.allSatisfy { store.isMissing(for: $0) }
         } else {
             storedPool = pool
             let known = Set(pool.keys.map(\.id))
             ledger = AgentKeyLedger(saved.usages.filter { known.contains($0.id) })
         }
+        if prune { lock.withLock { saveStateLocked() } }
     }
 
     var pool: AgentKeyPool { lock.withLock { storedPool } }

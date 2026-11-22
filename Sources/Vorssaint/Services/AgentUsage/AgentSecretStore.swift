@@ -9,6 +9,10 @@ import Security
 protocol AgentSecretStore {
     func set(_ secret: String, for id: UUID) -> Bool
     func secret(for id: UUID) -> String?
+    /// Whether the store can say the item is gone, rather than only unreadable
+    /// right now. The registry prunes a saved record only on this answer, so a
+    /// locked or unavailable keychain cannot delete a key that still exists.
+    func isMissing(for id: UUID) -> Bool
     func remove(for id: UUID) -> Bool
 }
 
@@ -51,6 +55,15 @@ struct KeychainAgentSecretStore: AgentSecretStore {
         return String(data: data, encoding: .utf8)
     }
 
+    /// Only an absent item counts as missing here. A locked keychain or a
+    /// refused read answers with a different status and leaves the record in
+    /// place, so a launch that cannot reach the keychain cannot prune it.
+    func isMissing(for id: UUID) -> Bool {
+        var match = query(for: id)
+        match[kSecMatchLimit as String] = kSecMatchLimitOne
+        return SecItemCopyMatching(match as CFDictionary, nil) == errSecItemNotFound
+    }
+
     func remove(for id: UUID) -> Bool {
         let status = SecItemDelete(query(for: id) as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
@@ -69,6 +82,11 @@ final class InMemoryAgentSecretStore: AgentSecretStore {
 
     func secret(for id: UUID) -> String? {
         secrets[id]
+    }
+
+    /// This double holds every secret in memory, so an absent id really is gone.
+    func isMissing(for id: UUID) -> Bool {
+        secrets[id] == nil
     }
 
     func remove(for id: UUID) -> Bool {
