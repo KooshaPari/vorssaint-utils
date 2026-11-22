@@ -5,9 +5,9 @@ import Combine
 import Foundation
 import Network
 
-/// Reads Claude Code, Codex and GitHub Copilot usage from local session logs, and
-/// OpenCode usage from its database, while the AI section is on, along with
-/// the plan limits the Claude app saves. The files are read where they are,
+/// Reads Claude Code, Codex, GitHub Copilot and jcode usage from local session
+/// logs, and OpenCode usage from its database, while the AI section is on, along
+/// with the plan limits the Claude app saves. The files are read where they are,
 /// incrementally, and nothing is copied or sent: only counters are kept, in
 /// memory and in the app's private folder so the next launch reads only what
 /// the agents wrote meanwhile. OpenCode's stay in memory only, and its
@@ -457,6 +457,19 @@ final class AgentUsageService: ObservableObject {
                 if read(path, provider: cursor.provider) { changed = true }
                 continue
             }
+            if cursor.provider == .jcode, AgentJCodeReader.isSessionRecord(path) {
+                // A session record is rewritten whole, so only its time says
+                // whether another reading is owed.
+                if AgentJCodeReader.hasJournal(path) {
+                    cursors[path] = nil
+                    if store.forget(file: path) { changed = true }
+                    continue
+                }
+                if AgentJCodeReader.modified(path) != cursor.modified, read(path, provider: cursor.provider) {
+                    changed = true
+                }
+                continue
+            }
             var info = stat()
             let exists = stat(path, &info) == 0
             guard !exists || UInt64(max(0, info.st_size)) != cursor.offset
@@ -513,6 +526,12 @@ final class AgentUsageService: ObservableObject {
     @discardableResult
     private func read(_ path: String, provider: AgentProvider) -> Bool {
         guard let cancellation = readerCancellation, !cancellation.isCancelled else { return false }
+        // A journal is the full account of a session; its record is only a
+        // fallback while that journal is missing.
+        if provider == .jcode, AgentJCodeReader.hasJournal(path) {
+            cursors[path] = nil
+            return store.forget(file: path)
+        }
         guard FileManager.default.fileExists(atPath: path) else {
             cursors[path] = nil
             return store.forget(file: path)

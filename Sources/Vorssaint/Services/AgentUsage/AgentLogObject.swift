@@ -117,6 +117,91 @@ struct AgentLogObject {
         fields[key].flatMap { AgentLogObject(data, range: $0) }
     }
 
+    /// The object elements of an array field, indexed in place like the
+    /// envelope: strings and nested payloads inside each element are skipped,
+    /// never decoded. Non-object elements are left out.
+    func elements(_ key: String) -> [AgentLogObject] {
+        guard let range = fields[key] else { return [] }
+        let ranges: [Range<Int>]? = data.withUnsafeBytes { raw in
+            let bytes = raw.bindMemory(to: UInt8.self)
+            var position = range.lowerBound
+            func space() {
+                while position < range.upperBound, [9, 10, 13, 32].contains(bytes[position]) { position += 1 }
+            }
+            func skipQuoted() -> Bool {
+                let start = position
+                guard position < range.upperBound, bytes[position] == 0x22 else { return false }
+                position += 1
+                while position < range.upperBound {
+                    guard let base = bytes.baseAddress,
+                          let found = memchr(base + position, 0x22, range.upperBound - position) else { return false }
+                    let quote = base.distance(to: found.assumingMemoryBound(to: UInt8.self))
+                    var back = quote
+                    while back > start, bytes[back - 1] == 0x5C { back -= 1 }
+                    position = quote + 1
+                    if (quote - back).isMultiple(of: 2) { return true }
+                }
+                return false
+            }
+            func skipValue() -> Bool {
+                guard position < range.upperBound else { return false }
+                if bytes[position] == 0x22 { return skipQuoted() }
+                if bytes[position] == 0x7B || bytes[position] == 0x5B {
+                    var closing: [UInt8] = []
+                    repeat {
+                        guard position < range.upperBound else { return false }
+                        switch bytes[position] {
+                        case 0x22:
+                            guard skipQuoted() else { return false }
+                            continue
+                        case 0x7B: closing.append(0x7D)
+                        case 0x5B: closing.append(0x5D)
+                        case 0x7D, 0x5D:
+                            guard closing.popLast() == bytes[position] else { return false }
+                        default: break
+                        }
+                        guard closing.count <= 128 else { return false }
+                        position += 1
+                    } while !closing.isEmpty
+                    return true
+                }
+                let start = position
+                while position < range.upperBound,
+                      ![9, 10, 13, 32, 0x2C, 0x5D, 0x7D].contains(bytes[position]) { position += 1 }
+                return position > start
+            }
+            space()
+            guard position < range.upperBound, bytes[position] == 0x5B else { return nil }
+            position += 1
+            space()
+            var ranges: [Range<Int>] = []
+            if position < range.upperBound, bytes[position] == 0x5D {
+                position += 1
+                space()
+                return position == range.upperBound ? ranges : nil
+            }
+            while true {
+                space()
+                let start = position
+                guard skipValue() else { return nil }
+                ranges.append(start..<position)
+                space()
+                guard position < range.upperBound else { return nil }
+                if bytes[position] == 0x2C {
+                    position += 1
+                    continue
+                }
+                guard bytes[position] == 0x5D else { return nil }
+                position += 1
+                break
+            }
+            space()
+            return position == range.upperBound ? ranges : nil
+        }
+        guard let ranges else { return [] }
+        return ranges.compactMap { AgentLogObject(data, range: $0) }
+    }
+
     func hasItems(_ key: String) -> Bool {
         guard let range = fields[key], data[range.lowerBound] == 0x5B else { return false }
         return data[(range.lowerBound + 1)..<range.upperBound]

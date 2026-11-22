@@ -12,6 +12,7 @@ enum HarnessReaderContractTests {
         codexGolden(suite)
         openCodeGolden(suite)
         copilotGolden(suite)
+        jcodeGolden(suite)
     }
 
     private static func line(_ json: String) -> Data { Data(json.utf8) }
@@ -141,5 +142,75 @@ enum HarnessReaderContractTests {
         let checkpoint = line(#"{"id":"c","timestamp":1790088020,"type":"session.usage_checkpoint","data":{}}"#)
         suite.expect(reader.parse(checkpoint, state: &state, now: now).isEmpty,
                      "a Copilot usage checkpoint parses to nothing")
+    }
+
+    private static func jcodeGolden(_ suite: TestSuite) {
+        let now = Date(timeIntervalSince1970: 0)
+        var state = AgentLogState()
+        let reader = AgentProvider.jcode.reader
+        let meta = #"{"model":"claude-haiku-5-5","provider_key":"claude-oauth","working_dir":"/Users/me/code/demo","short_name":"otter","status":"Active","model_usage_turn_id":"session_otter_1:message_1","last_active_at":"2026-09-22T12:00:00Z"}"#
+        let user = #"{"id":"message_1","role":"user","timestamp":"2026-09-22T12:00:00Z","content":[{"type":"text","text":"fake prompt"}]}"#
+        let assistant = #"{"id":"message_2","role":"assistant","timestamp":"2026-09-22T12:00:20Z","token_usage":{"input_tokens":1000,"cache_read_input_tokens":100,"cache_creation_input_tokens":50,"output_tokens":20},"content":[{"type":"text","text":"fake reply"}]}"#
+        let journal = line(#"{"meta":\#(meta),"append_messages":[\#(user),\#(assistant)]}"#)
+        let entries = reader.parse(journal, state: &state, now: now)
+        let began = Date(timeIntervalSince1970: 1_790_078_400)
+        let replied = Date(timeIntervalSince1970: 1_790_078_420)
+        suite.expect(entries.count == 4 && entries[0] == .turnBegan(began)
+                        && entries[1] == .turnContext(model: "claude-haiku-5-5", project: "demo")
+                        && entries[2] == .turnActive(replied),
+                     "a jcode journal opens its session turn and keeps it active")
+        if case let .usage(key, record, billable)? = entries.last, entries.count == 4 {
+            suite.expect(key == "jcode:message_2" && record.provider == .jcode && record.model == "claude-haiku-5-5"
+                            && record.project == "demo" && record.session == "session_otter_1"
+                            && record.tokens == AgentTokens(input: 850, cacheWrite: 50, cacheRead: 100, output: 20)
+                            && billable.tokens == record.tokens,
+                         "a jcode response counts prompt, cache and output tokens apart")
+        } else {
+            suite.expect(false, "a jcode assistant message reports usage")
+        }
+        let closedMeta = #"{"model":"claude-haiku-5-5","working_dir":"/Users/me/code/demo","status":"Closed","model_usage_turn_id":"session_otter_1:message_3","last_active_at":"2026-09-22T12:01:00Z"}"#
+        let closed = line(#"{"meta":\#(closedMeta),"append_messages":[]}"#)
+        suite.expect(reader.parse(closed, state: &state, now: now)
+                        == [.turnEnded(Date(timeIntervalSince1970: 1_790_078_460), completed: false, duration: nil)],
+                     "a closed jcode session ends its turn without a notice")
+        suite.expect(reader.parse(line(#"{"meta":{}}"#), state: &state, now: now).isEmpty,
+                     "jcode metadata with nothing else parses to nothing")
+        suite.expect(reader.parse(line(#"{"meta":{"status":"Active""#), state: &state, now: now).isEmpty,
+                     "a truncated jcode line parses to nothing")
+        suite.expect(reader.parse(line(#"{"meta":{},"append_env_snapshots":[{"captured_at":"2026-09-22T12:00:00Z","reason":"set_model"}]}"#),
+                                  state: &state, now: now).isEmpty,
+                     "jcode environment snapshots are ignored")
+        var live = AgentLogState()
+        let snapshot = line(#"{"jcode_session":true,"id":"session_otter_2","model":"gpt-6-sol","working_dir":"/Users/me/code/web","status":"Active","last_active_at":"2026-09-22T12:00:00Z"}"#)
+        suite.expect(reader.parse(snapshot, state: &live, now: began)
+                        == [.turnBegan(began), .turnContext(model: "gpt-6-sol", project: "web")],
+                     "an active jcode session record opens its turn with its context")
+        let closedSnapshot = line(#"{"jcode_session":true,"id":"session_otter_2","model":"gpt-6-sol","working_dir":"/Users/me/code/web","status":"Closed","last_active_at":"2026-09-22T12:00:00Z"}"#)
+        suite.expect(reader.parse(closedSnapshot, state: &live, now: began)
+                        == [.turnEnded(began, completed: false, duration: nil)],
+                     "a closed jcode session record ends its turn")
+        suite.expect(reader.parse(line(#"{"jcode_session":true,"#), state: &live, now: now).isEmpty,
+                     "a truncated jcode session record parses to nothing")
+
+        // A reply's text can quote the shape of a counter; only the message's
+        // own field counts, and a non-object element is stepped over.
+        var noisy = AgentLogState()
+        let quoted = line(#"{"meta":{"model":"gpt-6-sol","working_dir":"/Users/me/code/demo","status":"Active"},"append_messages":["skip me",{"id":"message_6","role":"assistant","timestamp":"2026-09-22T12:00:30Z","content":[{"type":"text","text":"\"token_usage\":{\"input_tokens\":999}"}]},{"id":"message_7","role":"assistant","timestamp":"2026-09-22T12:00:31Z","token_usage":{"input_tokens":10,"output_tokens":2},"content":[]}]}"#)
+        let noisyEntries = reader.parse(quoted, state: &noisy, now: now)
+        suite.expect(noisyEntries.count == 4
+                        && noisyEntries.compactMap(usageKey) == ["jcode:message_7"],
+                     "only a jcode message's own counters count, never counter text it quotes")
+
+        var crashed = AgentLogState()
+        crashed.turnOpen = true
+        let crash = line(#"{"meta":{"status":{"Crashed":{"message":"fake exit"}}},"append_messages":[]}"#)
+        suite.expect(reader.parse(crash, state: &crashed, now: now)
+                        == [.turnEnded(nil, completed: false, duration: nil)] && !crashed.turnOpen,
+                     "a jcode crash status ends the open turn")
+    }
+
+    private static func usageKey(_ entry: AgentLogEntry) -> String? {
+        if case let .usage(key, _, _) = entry { return key }
+        return nil
     }
 }
