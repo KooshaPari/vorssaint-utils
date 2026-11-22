@@ -1,5 +1,26 @@
 > Original produced as scratch research on 2026-11-21 and preserved here verbatim; the scratch copy lived on volatile storage outside this repository.
 
+---
+
+## Supersession addendum (2026-11-22)
+
+Dated 2026-11-22, the operator retired the herdr 0.9.x TUI generation entirely. The HC adapter
+(`hc` / `herdr-core` 0.1.21 with `herdr-app`) is the **only supported backend**. Everything below is
+preserved 2026-11-21 research and stays unedited. The points marked here are history only and must
+not be implemented as written.
+
+| Body location | Status now | Still valid |
+| --- | --- | --- |
+| §4 Path A as a candidate path, including its write side (`pane.report_agent_session`, `pane.report_agent`, `pane.release_agent`) | Superseded, Path A is not a candidate | §4's transport-agnostic seam shape, and §2.2/§2.2.1 as a description of 0.9.x |
+| §5.1 contract tests A1 to A8 | Superseded, do not implement | A4/A5's lesson that `HERDR_*` presence is not liveness, carried into the HC probe tests |
+| §5.3 live acceptance test L5 (Path A only) | Superseded, do not run | L1 to L4 and L6 to L8 still apply |
+| §7 clause promoting a live Path A probe on the Mac to the primary backend | Superseded, withdrawn | The Mac generation probe in L1/L4 still helps confirm HC presence there |
+| §7 seam justified by "Path A can occupy later without rework" | Re-justified | The seam stays. It is justified by backend portability, not by a possible 0.9.x return |
+| §5.4 quoted figures 123,642 checks and 77 agent-key checks | Corrected in this addendum only | Current recorded figures: 123,796 checks total and 125 agent-key checks |
+
+Scope consequence: no code path may depend on `HERDR_*`, on a 0.9.x binary, on `herdr.sock`, or on the
+0.9.x socket schema. Backend selection is HC only.
+
 # D2 — herdr session and pane state: verified contract spec
 
 Task: `docs/ROADMAP_LEDGER.md` row **D2** — "herdr session and pane state through the
@@ -598,3 +619,17 @@ Every claim above traces to one of these observations, made 2026-11-21 15:19–1
 - Did not read any `screens/*.snap`, and did not call `pane read`, `terminal.read`, `herdr-app shot`,
   or `hc read`.
 - Made no repository change and no commit. Only this file was written, on E:.
+
+---
+
+## Closing note (2026-11-22)
+
+Preserving the body leaves one substantive gap open. HC has **no agent-session identity channel at
+all**: there is no `report_agent_session` equivalent, and `terminal.get`, `terminals.json` and
+`events` carry no session id or path. So the ledger's "identity supplied by the agents themselves"
+still needs a concrete carrier, and that is the open design decision.
+
+- Candidate carrier: `hc label <t> agent.session=<id>`. It is the only write-side hook the research
+  found (`terminal.label`, CLI `hc label <t> k=v...`).
+- Alternative, weaker: infer identity from `foreground.argv` and `title`. The argv alternative
+  mis-attributes wrapper scripts and shells, because `argv[0]` is then the wrapper, not the agent.
