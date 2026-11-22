@@ -238,7 +238,8 @@ first two failed on this branch's own checks:
    `NotchLevelTrackingTests` clicks, and `RepositoryFeatureTests` rejecting an
    embedded `/usr/bin/tailscale` path that does not exist. The `--dev` build
    passed.
-3. `c0316be3`, the delivered tip: all three green.
+3. `c0316be3`, the last code commit, ran all three suites green. Only
+   documentation commits follow it, and none touches source.
 
 ```sh
 VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --test-suite=network
