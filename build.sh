@@ -316,6 +316,9 @@ if (( TEST )); then
         Sources/Vorssaint/Services/AgentUsage/Harness/OpenCodeReader.swift
         Sources/Vorssaint/Services/AgentUsage/Harness/CopilotReader.swift
         Sources/Vorssaint/Services/AgentUsage/Harness/JCodeReader.swift
+        Sources/Vorssaint/Services/AgentUsage/Harness/HerdrPaneSource.swift
+        Sources/Vorssaint/Services/AgentUsage/Harness/HerdrCoreBackend.swift
+        Sources/Vorssaint/Services/AgentUsage/Harness/HerdrTransport.swift
         Sources/Vorssaint/Services/AgentUsage/AgentUsageSummary.swift
         Sources/Vorssaint/Services/AgentUsage/AgentUsageStore.swift
         Sources/Vorssaint/Services/AgentUsage/AgentUsageArchive.swift
