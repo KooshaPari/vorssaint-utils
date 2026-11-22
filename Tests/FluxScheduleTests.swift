@@ -84,7 +84,10 @@ enum FluxScheduleTests {
         // A window that does not cross midnight follows the same rules.
         suite.expect(state(8 * 60, daytime).phase == .warming, "a daytime window starts at its own edge")
         suite.expect(state(9 * 60, daytime).phase == .night, "a daytime window reaches its night target")
-        suite.expect(state(16 * 60, daytime).phase == .cooling, "a daytime window cools into its end")
+        suite.expect(state(16 * 60, daytime).phase == .night,
+                     "a daytime window holds its target up to the cooling boundary")
+        suite.expect(state(16 * 60 + 1, daytime).phase == .cooling,
+                     "a daytime window cools into its end")
         suite.expect(state(17 * 60, daytime).phase == .day
                      && state(17 * 60, daytime).kelvin == 6500,
                      "a daytime window is neutral exactly at its end")
@@ -251,7 +254,7 @@ enum FluxScheduleTests {
         let off = FluxSupport.actions(displays: displays, tinted: [1], enabled: false, kelvin: night)
         suite.expect(off.first { $0.id == 1 }?.action == .restore,
                      "disabling restores a display this app tinted")
-        suite.expect(off.first { $0.id == 2 }?.action == .none,
+        suite.expect(off.first { $0.id == 2 }?.action == FluxSupport.DisplayAction.none,
                      "disabling never writes to a display this app did not tint")
 
         // Sunrise (a neutral target with the feature still on) also restores.
