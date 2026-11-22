@@ -603,6 +603,8 @@ if (( TEST )); then
         Sources/Vorssaint/Services/AgentUsage/AgentKeyStore.swift
         Sources/Vorssaint/Services/AgentUsage/AgentSecretStore.swift
         Sources/Vorssaint/Services/AgentUsage/AgentKeyRegistry.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentKeyProvisioner.swift
+        Sources/Vorssaint/Core/AgentKeyStrings.swift
         Sources/Vorssaint/Services/WindowLayout/WindowStageManagerSupport.swift
         Sources/Vorssaint/Core/WindowStageManagerStrings.swift
         Sources/Vorssaint/Core/WindowEdgeSnapRestoreStrings.swift

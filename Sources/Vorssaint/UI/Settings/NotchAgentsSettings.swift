@@ -52,6 +52,7 @@ struct NotchAgentsSettingsControls: View {
             providerRow(.copilot, isOn: $copilot)
             if claude { ClaudeAccountSettings() }
             if codex { CodexAccountsSettings() }
+            if opencode { AgentKeySettings() }
 
             Divider()
             Text(text.cardsTitle).font(.subheadline.weight(.medium))
