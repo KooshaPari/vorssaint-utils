@@ -122,12 +122,14 @@ enum TailnetPeerVerdict: Equatable {
 
 enum TailnetSupport {
     /// Every path the macOS Tailscale build is seen at: the GUI app ships its
-    /// own CLI, and the standalone CLI lands in either Homebrew prefix.
+    /// own CLI, and the standalone CLI lands in a Homebrew prefix. The
+    /// repository check that every embedded /usr/bin path exists rules out a
+    /// `/usr/bin/tailscale` candidate, because the Tailscale package does not
+    /// install one there.
     static let cliCandidates = [
         "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
         "/opt/homebrew/bin/tailscale",
         "/usr/local/bin/tailscale",
-        "/usr/bin/tailscale",
     ]
 
     /// The status probe reads a small JSON document; anything larger is not a

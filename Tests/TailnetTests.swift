@@ -130,7 +130,7 @@ enum TailnetTests {
         suite.expect(TailnetSupport.parseStatus("[]") == .unavailable(.malformedStatus),
                      "a JSON array is not a status object")
         if case let .live(keyOnly) = TailnetSupport.parseStatus(
-            #"{"BackendState":"Running","Peer":{"node-a":{"ID":"","HostName":"","DNSName":"","TailscaleIPs":["100.64.0.9"]}}}"#) {
+            #"{"BackendState":"Running","Peer":{"node-a":{"ID":"","HostName":"","DNSName":"","TailscaleIPs":["100.64.0.9"],"Online":true}}}"#) {
             suite.expect(keyOnly.peers.first?.id == "node-a",
                          "a peer record with an empty ID still carries its map key as the node identity")
             suite.expect(TailnetSupport.verifyPeer(address: "100.64.0.9", availability: .live(keyOnly),
