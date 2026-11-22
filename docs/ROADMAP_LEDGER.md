@@ -97,7 +97,63 @@ implementation, bundle it.
 - The self-test build slices individual functions into
   `build/generated-tests/*.swift`; a sliced function cannot use instance
   properties declared elsewhere, so such paths read preferences directly.
-- C: on the Windows host is below the 500 GB threshold, so new work lives on E:.
+- C: on the Windows host has **654,828,756,992 bytes free (609.86 GB)** of
+  1,997,941,051,392 bytes, measured 2026-11-22 07:47 UTC with
+  `Get-CimInstance Win32_LogicalDisk`. That is above the 500 GB threshold read
+  as 500,000,000,000 bytes, so the earlier "C: is below the threshold" note is
+  retired: it was wrong as recorded. E: (`Data`, 4,000,768,323,584 bytes,
+  3,377,327,542,272 bytes free at the same moment) remains where bulky scratch
+  and build output go, by preference for space headroom rather than because C:
+  is short.
+
+### Isolated agent browser (measured 2026-11-22)
+
+- The recorded instruction that the agent browser is a dedicated Brave profile
+  via `C:\Users\koosh\.jcode\browser\start-brave-agent.cmd` with
+  `JCODE_BROWSER=brave` does not match this host. Brave is not installed: the
+  launcher's target
+  `C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe` is
+  absent, only `AppData\Local\BraveSoftware` leftovers remain, and the script
+  prints "Brave not found" and exits 1. `JCODE_BROWSER` reads as `edge` at user
+  scope, and `jcode browser status` reports backend `firefox_agent_bridge`,
+  browser `edge`, bridge `not responding`.
+- The isolated option that actually exists is
+  `C:\Users\koosh\.jcode\browser\start-edge-canary-agent.cmd`, which runs
+  `start-edge-canary-agent.py`: Edge Canary (`msedge.exe` under
+  `C:\Users\koosh\AppData\Local\Microsoft\Edge SxS\Application`) against the
+  dedicated profile `C:\Users\koosh\.jcode\browser\edge-canary-agent-profile`,
+  sync disabled, CDP on port 9337, and the Browser Agent Bridge unpacked
+  extension installed over CDP at launch because Edge Canary 159 and later
+  ignore `--load-extension`. Nothing was listening on 9337 when measured, so
+  the bridge answers only after that launcher has run.
+- The personal Edge profile must never be targeted. Automation goes only through
+  the dedicated `edge-canary-agent-profile` on port 9337, never the user's
+  default Edge profile, its windows, or its running session.
+
+### OpenCode Go key lane (measured 2026-11-22)
+
+- Keys for this lane live in `C:\Users\koosh\Ocgo.env`: eight entries, seven
+  `OC_*_API_KEY` names plus `MINIMAX_API_KEY`. The seven are
+  `OC_GMAILDEF_API_KEY`, `OC_GMAIL2_API_KEY`, `OC_ASU_API_KEY`,
+  `OC_MIKE_API_KEY`, `OC_RAM_API_KEY`, `OC_KO_API_KEY` and
+  `OC_ICLOUD_API_KEY`.
+- The pool is `ocgo.exe serve --addr 127.0.0.1:8791 --luna` (observed pid
+  14292, `/health` returns 200 with `{"families":{"minimax":1,"ocgo":7}}`).
+- Weekly saturation, read with
+  `ocgo.exe usage --env C:\Users\koosh\Ocgo.env --json`: six of the seven
+  OpenCode Go keys report Weekly Used 100 and status `rate-limited`, resetting
+  2026-11-23T00:00:00Z. Only `OC_ICLOUD_API_KEY` is healthy at Weekly 24, and it
+  is the key the pool routes through. `OC_ASU_API_KEY` and `OC_MIKE_API_KEY` are
+  also Monthly 100 `rate-limited`; the other four sit at Monthly 50. The MiniMax
+  key is separately Weekly 100 `exhausted`, resetting 2026-11-25T07:08:49Z.
+- `/pool` agrees with that shape: six `ocgo` entries in `cooling` with
+  `lastStatus` 429 and roughly 58,400 s of cooldown left, and `OC_ICLOUD_API_KEY`
+  `ready` with `lastStatus` 200.
+- Operational consequence: the OpenCode Go fallback lane has one usable key
+  until the weekly reset, so route as the free and low-cost paths intend and do
+  not lean on this lane for volume.
+- Names and counts only are recorded here. No key value, prefix or suffix is
+  written into this repository.
 
 ## Workspace topology (corrected 2026-11-21)
 
