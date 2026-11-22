@@ -269,3 +269,94 @@ rises from 123796 to 123918; 121 of the 122 are the new suite and one is
 `NotchLevelTrackingTests` horizontal-click failure appeared at this tip; the
 known base failures are unchanged and were not chased.
 
+## Merge of `dev/d2-hc-pane-source` into `dev/maccy-clipboard-parity`
+
+Merge commit `df491e0a` on the Windows host by jcode (D2 track), plain merge, no
+squash and no rebase. `dev/d2-hc-pane-source` was cut from `e0cba445`; the
+target had moved four commits ahead (`8e49b4f8`, `a9c817bf`, `d10f79bf`,
+`d9aacfcf`) touching only `docs/ROADMAP_LEDGER.md`, `docs/D2_HERDR_CONTRACT.md`
+and `.gitignore`. The merge reported no conflicts: the branch's own doc edit is
+in `docs/VALIDATION_LOG.md`, a file the target side had not touched since the
+base, and its `Sources/`, `Tests/` and `build.sh` changes are additions to files
+the target side left alone. Both documentation entries are therefore present
+without hand resolution, and nothing stale was reintroduced: the only remaining
+`123,642` and `77`-check mentions are the historical corrections already in the
+log and the D2 addendum that quotes and corrects them.
+
+### Staging
+
+No push happened before validation, so the merge commit was carried to the Mac
+as a git bundle (`^d9aacfcf ^9947cead HEAD`, 101,834,025 bytes) written under
+`E:\koosh\Agents\scratch\d2merge\`, transferred by piping it through the Git
+OpenSSH wrapper, verified with `git bundle verify`, fetched, and checked out as a
+detached worktree at `/private/tmp/vorssaint-d2merge`. The Mac clone stayed on
+`dev/maccy-clipboard-parity`.
+
+### Batched macOS run
+
+One ssh invocation, macOS 27.3, four steps in order, output captured to
+`/tmp/d2merge-run.log`:
+
+```sh
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --test-suite=agents
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --test-suite=notch
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --test
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --dev
+```
+
+Exit codes: `agents=0 notch=1 full=0 dev=0`. Verbatim agents tail:
+
+```text
+agents: OK (2720 checks, 48.65s)
+TESTS OK (2720 checks)
+```
+
+The standalone notch suite failed two checks on the first attempt:
+
+```text
+notch: FAILED (67933 checks, 41.77s)
+TESTS FAILED (2 of 67933):
+  - Tests/NotchLevelTrackingTests.swift:251: vertical level 0...1.0: an independent mouse wheel tick still adjusts the volume during the lift gap: got 0.0, expected 0.05 within 0.0001
+  - Tests/NotchLevelTrackingTests.swift:251: vertical level 0...2.0: an independent mouse wheel tick still adjusts the volume during the lift gap: got 0.0, expected 0.1 within 0.0001
+```
+
+Both are in the known `NotchLevelTrackingTests` synthesized-event family; they are
+the vertical wheel-tick variant of the horizontal-click checks already recorded as
+failing on base `545f69b2`, and neither touches the HC pane source. The same suite
+passed inside the full run that followed (below), and one repeat of the suite alone
+passed with the same check count, so both are attributed to that flakiness rather
+than to this merge:
+
+```text
+notch: OK (67933 checks, 41.65s)
+TESTS OK (67933 checks)
+```
+
+Full suite tail, including the notch suite passing at 67933 checks:
+
+```text
+notch: OK (67933 checks, 40.00s)
+switcher-model: OK (2127 checks, 0.32s)
+agents: OK (2720 checks, 42.41s)
+features: OK (1422 checks, 0.16s)
+...
+emoji: OK (225 checks, 0.05s)
+TESTS OK (123918 checks)
+PREFERENCE CLEANUP TESTS OK
+UNINSTALL SPACES TESTS OK
+DEVELOPER INSTALL ISOLATION TESTS OK
+```
+
+Dev bundle tail:
+
+```text
+  stamped dev build: df491e0ac
+  signing with legacy self-signed identity: Vorssaint Utils Signing
+  ...
+✓ Bundle ready: build/stage.noindex/Vorssaint (Developer).app
+```
+
+The merged tree therefore holds the two candidate figures stated in the D2 row:
+2720 agent checks and 123918 on the full suite, with the notch suite unchanged at
+67933.
+
