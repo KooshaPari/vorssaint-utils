@@ -213,6 +213,35 @@ enum AgentKeyUsageTests {
         suite.expect(settledRegistry.nextRoute(at: now)?.key.id == settledRoute.key.id,
                      "an explicit reset returns the rejected key to routing")
 
+        // Every change publishes once, so the agents page can republish without
+        // polling, and the published row carries what was recorded.
+        var publications = 0
+        let publicationObserver = NotificationCenter.default.addObserver(
+            forName: AgentKeyRegistry.usageDidChange, object: nil, queue: nil) { _ in
+                publications += 1
+            }
+        let publishRegistry = AgentKeyRegistry(store: InMemoryAgentSecretStore(),
+                                               registryStore: InMemoryAgentKeyRegistryStore())
+        guard let publishKey = publishRegistry.addKey(provider: provider, label: "publish",
+                                                      secret: "sk-test-7777"),
+              let publishRoute = publishRegistry.nextRoute(at: now) else {
+            suite.expect(false, "a key for publication is saved and routed")
+            return
+        }
+        suite.expect(publications == 1, "saving a key publishes one usage change")
+        publishRegistry.record(publishRoute, tokens: AgentTokens(input: 7, output: 2), at: now)
+        suite.expect(publications == 2, "recording usage publishes one usage change")
+        suite.expect(publishRegistry.usageRows(at: now).first?.tokens.total == 9,
+                     "the published row carries the usage that was recorded")
+        suite.expect(publishRegistry.reportFailure(publishRoute, status: 401, at: now)
+                        && publications == 3,
+                     "reporting a key failure publishes one usage change")
+        suite.expect(publishRegistry.resetKey(publishKey.id) && publications == 4,
+                     "resetting a key publishes one usage change")
+        publishRegistry.removeKey(publishKey.id)
+        suite.expect(publications == 5, "removing a key publishes one usage change")
+        NotificationCenter.default.removeObserver(publicationObserver)
+
         // Persistence keeps counters and health, never the secret or its tail.
         let persisted = registryStore.state
         let data = JSONAgentKeyRegistryStore.encode(persisted)
@@ -228,6 +257,21 @@ enum AgentKeyUsageTests {
                      "a key's bad health survives persistence")
         suite.expect(JSONAgentKeyRegistryStore.decode(Data("not json".utf8)).keys.isEmpty,
                      "a file another build wrote reads as no keys")
+
+        // A rate limit keeps its retry time through the file, and still lifts
+        // by itself at that time.
+        let limitedUntil = now.addingTimeInterval(600)
+        let limitedID = UUID()
+        let limitedData = JSONAgentKeyRegistryStore.encode(AgentKeyRegistryState(
+            keys: [AgentKeyRecord(id: limitedID, provider: provider, label: "limited")],
+            cursor: limitedID,
+            usages: [AgentKeyUsage(id: limitedID, health: .rateLimited(until: limitedUntil))]))
+        let limitedHealth = JSONAgentKeyRegistryStore.decode(limitedData).usages.first?.health
+        suite.expect(limitedHealth == .rateLimited(until: limitedUntil),
+                     "a rate limit keeps its retry time through the registry file")
+        suite.expect(limitedHealth?.isSelectable(at: limitedUntil.addingTimeInterval(-1)) == false
+                        && limitedHealth?.isSelectable(at: limitedUntil) == true,
+                     "a restored rate limit holds the key out until its retry time")
 
         let restored = AgentKeyRegistry(store: secrets, registryStore: registryStore)
         suite.expect(restored.pool.keys.map(\.label) == ["work", "personal", "overflow"],
@@ -278,6 +322,12 @@ enum AgentKeyUsageTests {
                      "no key is offered while its secret cannot be read")
         suite.expect(lockedStore.state.keys.count == 2 && lockedStore.saves == 0,
                      "an unreadable keychain leaves the saved registry untouched")
+
+        // The restored registry routes and publishes only what it could resolve.
+        suite.expect(prunedRegistry.nextRoute(at: now)?.secret == "sk-test-6666",
+                     "a restore with a missing secret routes to the key that still resolves")
+        suite.expect(prunedRegistry.usageRows(at: now).map(\.id) == [keptID],
+                     "a restore with a missing secret publishes only the key that resolves")
 
         // Removing a key drops its usage, its secret and its route.
         let removable = restored.pool.keys[2].id
