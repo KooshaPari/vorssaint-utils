@@ -339,5 +339,51 @@ enum AgentKeyUsageTests {
         suite.expect(!JSONAgentKeyRegistryStore.decode(
                         JSONAgentKeyRegistryStore.encode(registryStore.state)).usages.contains { $0.id == removable },
                      "removing a key drops its persisted counters")
+
+        // A file write no longer holds the state lock: a reader on another
+        // thread finishes while the write is still in flight. The old code
+        // saved under the lock, so this reader would wait for the file.
+        final class BlockingRegistryStore: AgentKeyRegistryStore {
+            private var state: AgentKeyRegistryState
+            let started = DispatchSemaphore(value: 0)
+            let release = DispatchSemaphore(value: 0)
+            init(_ state: AgentKeyRegistryState) { self.state = state }
+            func load() -> AgentKeyRegistryState { state }
+            func save(_ state: AgentKeyRegistryState) -> Bool {
+                started.signal()
+                release.wait()
+                self.state = state
+                return true
+            }
+        }
+        let blockingID = UUID()
+        let blockingStore = BlockingRegistryStore(AgentKeyRegistryState(
+            keys: [AgentKeyRecord(id: blockingID, provider: provider, label: "blocking")],
+            cursor: blockingID,
+            usages: [AgentKeyUsage(id: blockingID)]))
+        let blockingSecrets = InMemoryAgentSecretStore()
+        _ = blockingSecrets.set("sk-test-8888", for: blockingID)
+        let blockingRegistry = AgentKeyRegistry(store: blockingSecrets, registryStore: blockingStore)
+        guard let blockingRoute = blockingRegistry.nextRoute(at: now) else {
+            suite.expect(false, "a key for the write-contention check is routed")
+            return
+        }
+        let writeFinished = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            blockingRegistry.record(blockingRoute, tokens: AgentTokens(input: 1), at: now)
+            writeFinished.signal()
+        }
+        let writeStarted = blockingStore.started.wait(timeout: .now() + 3) == .success
+        var rowsWhileWriting = 0
+        let readFinished = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            rowsWhileWriting = blockingRegistry.usageRows(at: now).count
+            readFinished.signal()
+        }
+        let readReturned = readFinished.wait(timeout: .now() + 3) == .success
+        blockingStore.release.signal()
+        let writeReturned = writeFinished.wait(timeout: .now() + 3) == .success
+        suite.expect(writeStarted && readReturned && rowsWhileWriting == 1 && writeReturned,
+                     "a reader completes while the registry file write is in flight")
     }
 }

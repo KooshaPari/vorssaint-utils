@@ -23,8 +23,9 @@ struct AgentKeyRoute {
 ///
 /// The pool, the rotation cursor and the per-key counters are written to the
 /// registry store; the secrets stay in the keychain. Every mutation takes the
-/// lock, because the AI page reads status on the main thread while provider
-/// requests rotate keys on their own queue.
+/// state lock, because the AI page reads status on the main thread while
+/// provider requests rotate keys on their own queue. The file is written after
+/// that lock is released, so a reader never waits on disk.
 final class AgentKeyRegistry {
     static let shared = AgentKeyRegistry(store: KeychainAgentSecretStore(),
                                          registryStore: JSONAgentKeyRegistryStore())
@@ -34,6 +35,11 @@ final class AgentKeyRegistry {
     static let usageDidChange = Notification.Name("com.vorssaint.agent-key-usage-did-change")
 
     private let lock = NSLock()
+    /// Serializes registry writes. `writtenRevision` is kept under this lock so
+    /// a snapshot taken earlier can never overwrite a later one.
+    private let writeLock = NSLock()
+    private var stateRevision: UInt64 = 0
+    private var writtenRevision: UInt64 = 0
     private var storedPool: AgentKeyPool
     private var ledger: AgentKeyLedger
     private let store: AgentSecretStore
@@ -82,7 +88,7 @@ final class AgentKeyRegistry {
             let known = Set(pool.keys.map(\.id))
             ledger = AgentKeyLedger(saved.usages.filter { known.contains($0.id) })
         }
-        if prune { lock.withLock { saveStateLocked() } }
+        if prune { persistState() }
     }
 
     var pool: AgentKeyPool { lock.withLock { storedPool } }
@@ -100,21 +106,21 @@ final class AgentKeyRegistry {
         guard store.set(trimmed, for: id) else { return nil }
         let reference = AgentKeyReference(id: id, provider: provider, label: label,
                                           tail: String(trimmed.suffix(4)))
-        lock.lock()
-        storedPool.add(reference)
-        ledger.register(id)
-        saveStateLocked()
-        lock.unlock()
+        lock.withLock {
+            storedPool.add(reference)
+            ledger.register(id)
+        }
+        persistState()
         notifyUsageChanged()
         return reference
     }
 
     func removeKey(_ id: UUID) {
-        lock.lock()
-        storedPool.remove(id)
-        ledger.forget(id)
-        saveStateLocked()
-        lock.unlock()
+        lock.withLock {
+            storedPool.remove(id)
+            ledger.forget(id)
+        }
+        persistState()
         _ = store.remove(for: id)
         notifyUsageChanged()
     }
@@ -158,10 +164,11 @@ final class AgentKeyRegistry {
         let changed = lock.withLock { () -> Bool in
             guard storedPool.keys.contains(where: { $0.id == route.key.id }) else { return false }
             ledger.record(route.key.id, tokens: tokens, requests: requests, at: date)
-            saveStateLocked()
             return true
         }
-        if changed { notifyUsageChanged() }
+        guard changed else { return }
+        persistState()
+        notifyUsageChanged()
     }
 
     /// Marks the key behind a failed request as rate-limited, invalid or
@@ -185,10 +192,11 @@ final class AgentKeyRegistry {
         let changed = lock.withLock { () -> Bool in
             guard storedPool.keys.contains(where: { $0.id == id }) else { return false }
             guard ledger.mark(failure, for: id, at: date) else { return false }
-            saveStateLocked()
             return true
         }
-        if changed { notifyUsageChanged() }
+        guard changed else { return false }
+        persistState()
+        notifyUsageChanged()
         return changed
     }
 
@@ -198,10 +206,11 @@ final class AgentKeyRegistry {
         let changed = lock.withLock { () -> Bool in
             guard ledger.usage(id) != nil else { return false }
             ledger.reset(id)
-            saveStateLocked()
             return true
         }
-        if changed { notifyUsageChanged() }
+        guard changed else { return false }
+        persistState()
+        notifyUsageChanged()
         return changed
     }
 
@@ -229,13 +238,28 @@ final class AgentKeyRegistry {
 
     // MARK: Persistence
 
-    /// Runs under the lock.
-    private func saveStateLocked() {
-        let state = AgentKeyRegistryState(
+    /// The state as it stands. Runs under the state lock.
+    private func stateLocked() -> AgentKeyRegistryState {
+        AgentKeyRegistryState(
             keys: storedPool.keys.map { AgentKeyRecord(id: $0.id, provider: $0.provider, label: $0.label) },
             cursor: storedPool.cursor,
             usages: ledger.all)
-        _ = registryStore.save(state)
+    }
+
+    /// Captures the state under the lock and writes it after releasing that
+    /// lock, so the agents page reading rows on the main thread is never held
+    /// behind the file. A revision pair under `writeLock` keeps an older
+    /// snapshot from overwriting a newer one when two mutations race.
+    private func persistState() {
+        let snapshot = lock.withLock { () -> (revision: UInt64, state: AgentKeyRegistryState) in
+            stateRevision &+= 1
+            return (stateRevision, stateLocked())
+        }
+        writeLock.lock()
+        defer { writeLock.unlock() }
+        guard snapshot.revision > writtenRevision else { return }
+        writtenRevision = snapshot.revision
+        _ = registryStore.save(snapshot.state)
     }
 
     private func notifyUsageChanged() {

@@ -23,7 +23,7 @@ describes a different working tree, not the commit it is attached to, and the
 
 ## D3 review fixes
 
-Four commits applied on the Windows host by jcode (D3 fixes track), each one
+Five commits applied on the Windows host by jcode (D3 fixes track), each one
 finding. Every commit ran:
 
 ```sh
@@ -41,3 +41,4 @@ macOS evidence for this series is appended below once the batched run exists.
 | `26f6ac7c` pruned registry written back | 2 | generator exit 0 |
 | `3911c511` executed check count | 3 | generator exit 0 |
 | `4eb9125f` rate-limit, missing-secret and publication coverage | 4 | generator exit 0 |
+| write outside the state lock (this commit) | 6 | generator exit 0, plus a blocking-store contention check in the suite |
