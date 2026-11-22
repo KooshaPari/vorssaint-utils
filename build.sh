@@ -435,6 +435,10 @@ if (( TEST )); then
         Sources/Vorssaint/Core/FeatureStrings.swift
         Sources/Vorssaint/Core/KillProcessStrings.swift
         Sources/Vorssaint/Core/PortManagerStrings.swift
+        Sources/Vorssaint/Services/SMB/SMBShares.swift
+        Sources/Vorssaint/Services/SMB/SMBSharesService.swift
+        Sources/Vorssaint/Services/Mesh/ComputeMeshSupport.swift
+        Sources/Vorssaint/Services/Mesh/ComputeMeshService.swift
         Sources/Vorssaint/Core/WhatsAppDownloadStrings.swift
         Sources/Vorssaint/Core/WhatsAppOrganizerStrings.swift
         Sources/Vorssaint/Core/ReleaseNotes.swift
