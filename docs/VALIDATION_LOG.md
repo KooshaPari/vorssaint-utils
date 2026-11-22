@@ -194,3 +194,78 @@ is quoted from those two records; it was not re-measured here.
 The only diagnostics are three pre-existing unused-result warnings, in
 `BrightnessService.swift` at 2956 and 3001 and `AppUninstaller.swift` at 303,
 all in files neither merged branch touches.
+
+## D2 herdr pane source (HC backend)
+
+Two commits on `dev/d2-hc-pane-source`, applied on the Windows host by jcode
+(D2 track). The desktop host runs HC, not the 0.9.x generation the ledger row
+names, so the reader targets `herdr-core` 0.1.21 behind a transport-agnostic
+seam; the 0.9.x socket contract is deliberately not implemented.
+`5b675bdb` adds the seam, the HC backend and its checks; `18907937` discards
+one probe result that is deliberately unused.
+
+### Windows
+
+```sh
+PYTHONUTF8=1 python Tests/generate_sources.py
+py -3 E:\koosh\Agents\scratch\d2hc\structural_check.py
+```
+
+The generator exits 0 and `build/generated-tests/` was removed from C:
+afterwards. The structural script prints `CHECKS OK (27)` and exits 0. It
+asserts that the reader names no screen surface, builds exactly one command
+(`hc server status`), never reads `HERDR_ENV` or `HERDR_SOCKET_PATH`, keeps pane
+rows out of the turn, spend and trend types, and that both fixtures are valid
+JSON with the states the decoder is tested against.
+
+### Batched macOS run
+
+One build run over one ssh invocation, against a detached worktree of
+`origin/dev/d2-hc-pane-source` at `18907937` created from the clone at
+`/Users/kooshapari/CodeProjects/vorssaint-utils`, by jcode (D2 track) on macOS
+27.3. The main clone stayed on `dev/maccy-clipboard-parity`; the worktree was
+removed afterwards and the tree was clean at `18907937`. An earlier attempt
+stopped at the fetch because the Mac names its only remote `origin`.
+
+```sh
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --test-suite=agents
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --test
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --dev
+```
+
+Exit codes: `agents=0 full=0 dev=0`. Verbatim tails:
+
+```text
+agents: OK (2720 checks, 48.58s)
+TESTS OK (2720 checks)
+```
+
+```text
+notch: OK (67933 checks, 40.52s)
+switcher-model: OK (2127 checks, 0.33s)
+agents: OK (2720 checks, 45.14s)
+features: OK (1422 checks, 0.12s)
+shortcut-clearing: OK (71 checks, 0.30s)
+utilities: OK (553 checks, 5.50s)
+settings: OK (1157 checks, 15.23s)
+feature-hub-layout: OK (178 checks, 29.17s)
+TESTS OK (123918 checks)
+PREFERENCE CLEANUP TESTS OK
+UNINSTALL SPACES TESTS OK
+DEVELOPER INSTALL ISOLATION TESTS OK
+```
+
+```text
+  stamped dev build: 18907937
+  signing with legacy self-signed identity: Vorssaint Utils Signing
+  ...
+✓ Bundle ready: build/stage.noindex/Vorssaint (Developer).app
+```
+
+The agents suite rises from 2599 to 2720, so the new suite executes 121 checks,
+including a real bounded subprocess and a real listening socket. The full suite
+rises from 123796 to 123918; 121 of the 122 are the new suite and one is
+`PreferenceNamespaceTests`, which reads one more compiled test file. No
+`NotchLevelTrackingTests` horizontal-click failure appeared at this tip; the
+known base failures are unchanged and were not chased.
+

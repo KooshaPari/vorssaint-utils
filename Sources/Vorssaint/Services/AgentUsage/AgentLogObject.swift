@@ -117,6 +117,13 @@ struct AgentLogObject {
         fields[key].flatMap { AgentLogObject(data, range: $0) }
     }
 
+    /// The object members of this object, keyed by member name and indexed in
+    /// place. A member that is not an object is left out. `terminals.json`
+    /// keeps one record per address under `terminals`.
+    func members() -> [String: AgentLogObject] {
+        fields.compactMapValues { AgentLogObject(data, range: $0) }
+    }
+
     /// The object elements of an array field, indexed in place like the
     /// envelope: strings and nested payloads inside each element are skipped,
     /// never decoded. Non-object elements are left out.
