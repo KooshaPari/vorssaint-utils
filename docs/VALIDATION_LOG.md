@@ -41,4 +41,47 @@ macOS evidence for this series is appended below once the batched run exists.
 | `26f6ac7c` pruned registry written back | 2 | generator exit 0 |
 | `3911c511` executed check count | 3 | generator exit 0 |
 | `4eb9125f` rate-limit, missing-secret and publication coverage | 4 | generator exit 0 |
-| write outside the state lock (this commit) | 6 | generator exit 0, plus a blocking-store contention check in the suite |
+| `ad46f771` write outside the state lock | 6 | generator exit 0, plus a blocking-store contention check in the suite |
+
+### Batched macOS run
+
+One ssh invocation, run once, against the fast-forwarded clone at
+`/Users/kooshapari/CodeProjects/vorssaint-utils`, tip `ad46f771`, by jcode
+(D3 fixes track) on macOS 27.3 (26C5047e). The tree was clean at `bb86a1d4`
+before a `--ff-only` merge; no local commits were present.
+
+```sh
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --test-suite=agent-keys
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --test
+VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh --dev
+```
+
+Exit codes: `agent=0 full=0 dev=0`. Verbatim tails:
+
+```text
+agent-keys: OK (95 checks, 0.00s)
+TESTS OK (95 checks)
+```
+
+```text
+emoji: OK (225 checks, 0.05s)
+TESTS OK (123667 checks)
+PREFERENCE CLEANUP TESTS OK
+UNINSTALL SPACES TESTS OK
+✓ Installed: /var/folders/.../Applications/Vorssaint.app
+DEVELOPER INSTALL ISOLATION TESTS OK
+```
+
+```text
+▸ Assembling and signing bundle…
+  stamped dev build: ad46f771
+  signing with legacy self-signed identity: Vorssaint Utils Signing
+✓ Bundle ready: build/stage.noindex/Vorssaint (Developer).app
+```
+
+The 95 agent-key checks are the executed count in the ledger row: 105
+assertion sites minus 10 failure-only guards. The full suite moved from the
+123642 the old trailers quoted to 123667, exactly the 25 agent-key checks this
+series adds. The only compiler diagnostic was a pre-existing warning in
+`AgentKeyPoolTests.swift:13` about `var empty` never being mutated, on a line
+this series does not touch.
