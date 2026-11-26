@@ -41,6 +41,25 @@ This permission is used by the mixer, the optional live equalizer and system aud
 
 Finder cut and paste and the uninstaller may ask for Automation. If a Finder move does nothing after a denial, open System Settings, Privacy and Security, Automation, and allow Vorssaint for Finder.
 
+### Now Playing is empty while music is playing
+
+The notch and the wheel read the current track through a small bundled bridge, and when that bridge
+fails there is nothing to draw, so the card looks exactly like a machine with no music on it. The
+reason is written to the system log instead of the screen.
+
+1. Open Console.app, pick your Mac in the sidebar, and search `category:now-playing`.
+2. Start the track again so the bridge runs.
+
+Each line names one of four things: the bridge's own files are missing from the app bundle, the
+helper process exited with an error, the reply came back too late, or the reply could not be read.
+The app says each one once per change, so a card that stays empty and a log with one line is a
+channel that broke and stayed broken, not repeated noise. The card itself still shows nothing. The
+log is the only place the reason appears today.
+
+If the line says the files are missing, the app bundle is damaged, so reinstall rather than rebuild
+over it. For the other three, quitting and reopening the player is the usual fix, and the last
+section of this guide is the place to say what you saw if it is not.
+
 ## Clipboard history does not copy or paste
 
 First check whether a fresh copy appears in history. History must be enabled,
