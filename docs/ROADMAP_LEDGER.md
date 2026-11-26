@@ -721,3 +721,38 @@ read the exit code.
 
 `89cca321` (harness) and `dd074a4f` (P86-5) both remain `change_made`, not
 `workflow_validated`, until the gate runs.
+
+### A shimmed type-check for the two Darwin-only keychain writers
+
+P86-5 was `change_made` and not type-checked: `LinuxSubsetCheck.sh` must exclude
+`AgentSecretStore.swift` and `SMBSharesLive.swift` because they import Security, so the only
+thing that could compile them was a Mac. `Tests/KeychainCompileCheck.sh` fixes exactly that
+and nothing more. It declares the 20 Security symbols those two files name plus a `Shell.run`
+signature (its real home, `ShellSupport.swift`, imports AppKit/CoreServices/Darwin), strips
+the single `import Security` line from copies, and runs `swiftc -typecheck`.
+
+What it proves: the files parse, every symbol resolves, the `SMBKeychainProjection`
+conformance still lines up, and every `SecItem*` call takes the argument types it is handed.
+What it does not prove: that an item is written with the class that was asked for, or any
+behaviour at all. It is a pre-flight for a gate host that can be away for a day, not a gate.
+
+```
+KEYCHAIN TYPECHECK OK (2 writers, shimmed Security) — not the release gate
+EXIT=0
+```
+
+Negative control, the `ThisDeviceOnly` constant deleted from the shim:
+
+```
+KEYCHAIN TYPECHECK FAILED:
+…AgentSecretStore.swift:93:33: error: cannot find 'kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly' in scope
+EXIT=2
+```
+
+So a symbol the framework does not provide cannot pass silently here. Earlier iterations of the
+same script failed on `CFString`, `CFDictionary` and `Shell` before those were declared, which
+is the same evidence from the other direction: nothing is being resolved by accident.
+
+Shim fidelity is the limit to keep in mind. `CFString` is `String` and `CFDictionary` is
+`NSDictionary` in the shim, so `as CFString` conversions are wider than Darwin's and could
+accept something the Mac rejects. The pre-flight narrows the gap; it does not close it.
