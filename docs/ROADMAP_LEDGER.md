@@ -22,7 +22,7 @@ UI marks anything changed in the current build with a green `KNU` tag.
 | A6 | Clear all including pinned, with its own confirmation | shipped |
 | A7 | Clipboard check interval preference | shipped |
 | A8 | Universal Clipboard skip as a first-class switch | shipped |
-| A9 | Clipboard surface placement as a chosen option: near the cursor, remembered popup, bottom of the screen, top centre, or the Dynamic Island — instead of only drag-and-remember | shipped (124340 checks PASS at `0969068d`; two review follow-ups open: forced placement must not overwrite the remembered origin, and the cards layout must not offer an inert picker) |
+| A9 | Clipboard surface placement as a chosen option: near the cursor, remembered popup, bottom of the screen, top centre, or the Dynamic Island — instead of only drag-and-remember | shipped: 124340 checks PASS at `0969068d`, and both review follow-ups landed in `0e32c835` (124373 checks) - a forced placement no longer overwrites the remembered origin, and the cards layout no longer offers an inert picker
 
 Reference: `docs/CLIPBOARD_MACCY_PARITY.md`.
 
