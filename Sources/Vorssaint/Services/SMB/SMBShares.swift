@@ -179,13 +179,14 @@ enum SMBShareSupport {
     /// merely resemble each other never collapse into one mount.
     static func mountPoint(for share: SMBShare, in mounts: [SMBMount]) -> String? {
         let configured = normalisedPath(share.mountPoint)
-        if let exact = mounts.first(where: { normalisedPath($0.mountPoint) == configured }) {
-            return exact.mountPoint
-        }
-        return mounts.first {
+        let candidates = mounts.filter {
             $0.server.caseInsensitiveCompare(share.server) == .orderedSame
                 && $0.share.caseInsensitiveCompare(share.share) == .orderedSame
-        }?.mountPoint
+        }
+        if let exact = candidates.first(where: { normalisedPath($0.mountPoint) == configured }) {
+            return exact.mountPoint
+        }
+        return candidates.first?.mountPoint
     }
 
     static func normalisedPath(_ value: String) -> String {

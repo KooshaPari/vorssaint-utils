@@ -209,6 +209,12 @@ final class SMBSharesService {
     /// unmounted keeps its own named outcome instead of a command failure.
     @discardableResult
     func unmount(shareID: UUID) -> SMBOutcome {
+        switch loadConfiguration() {
+        case .invalid: return .unavailable(.configurationMalformed)
+        case .absent: return .unknownShare
+        case .shares(let configured):
+            guard configured.contains(where: { $0.id == shareID }) else { return .unknownShare }
+        }
         reload()
         switch listing {
         case .unavailable(let reason):

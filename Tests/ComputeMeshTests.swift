@@ -82,6 +82,9 @@ enum ComputeMeshTests {
     static func run(_ suite: TestSuite) {
         suite.run("mesh-sources") {
             let unavailable = Runtime()
+            // A device backend that answers with an empty list is present and has
+            // nothing attached; only a nil answer means the backend is missing.
+            unavailable.devices = nil
             let model = ComputeMeshService(environment: unavailable.environment()).reload()
             suite.expect(model.rows.isEmpty && !model.isLive,
                          "three absent backends produce no rows and are not a fleet")
@@ -91,6 +94,12 @@ enum ComputeMeshTests {
                          "a missing ssh config is a named unavailable state")
             suite.expect(model.state(of: .connectedDevice) == .unavailable(.deviceBackendUnavailable),
                          "a missing device backend is a named unavailable state")
+
+            let answered = Runtime()
+            let emptyFleet = ComputeMeshService(environment: answered.environment()).reload()
+            suite.expect(emptyFleet.state(of: .connectedDevice) == .available(applied: 0)
+                             && emptyFleet.rows.isEmpty,
+                         "a device backend answering with nothing attached is available and empty")
 
             let runtime = Runtime()
             runtime.executables = [tailscalePath]
