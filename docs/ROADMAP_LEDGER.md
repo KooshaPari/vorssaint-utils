@@ -36,10 +36,10 @@ parent sidebar item)".
 
 | # | Item | Status |
 | --- | --- | --- |
-| K1 | A KNU/new feature renders under its parent Settings sidebar row in the What's New window, not in its own top-level group | wip (`dev/knu-review`) |
-| K2 | KNU entries are reachable from Settings search, or from a dedicated page | wip (`dev/knu-review`) |
-| K3 | `CHANGELOG.md` carries a `### What's KNU` subsection with the date and time each item became new, so "what is new for a user as of <date/time>" is reviewable | wip (`dev/knu-review`) |
-| K4 | A test fails if the What's KNU section and `NewFeatureBadges.tagged` disagree | wip (`dev/knu-review`) |
+| K1 | A KNU/new feature renders under its parent Settings sidebar row in the What's New window, not in its own top-level group | shipped (124368 checks PASS at `1163eaf5`) |
+| K2 | KNU entries are reachable from Settings search, or from a dedicated page | shipped, with the gap the review found: Settings search matches KNU, but the What's New window itself has no search field |
+| K3 | `CHANGELOG.md` carries a `### What's KNU` subsection with the date and time each item became new, so "what is new for a user as of <date/time>" is reviewable | shipped (the stamp lives in `CHANGELOG.md`; see the open follow-ups) |
+| K4 | A test fails if the What's KNU section and `NewFeatureBadges.tagged` disagree | shipped (agreement is tested in both directions) |
 
 Source of truth for "new in this build" is `Sources/Vorssaint/Core/NewFeatureBadges.swift`.
 
@@ -287,3 +287,46 @@ batched `./build.sh --test` run per branch on `kooshas-laptop`.
   which is the operator's requirement), and the cards layout ignores three of the five
   placement values while the Settings picker stays enabled and silent about it.
 
+
+## KNU lane verified, after a compile failure of its own
+
+`dev/knu-review` merged as `48c06ab2` and then did not compile on the Mac. The
+first gate attempt stopped at three errors and a cascade in
+`Tests/NewFeatureBadgesTests.swift`, all from one name: `checkNesting` binds
+`let sections = WhatsNewSupport.sections(...)` at :155 and declares
+`func sections(for:)` at :185 in the same scope, so the earlier `let` keeps the
+name, every `sections(for:)` call resolves to a `WhatsNewSections` **value**, and
+the compiler reports "cannot call value of non-function type
+'WhatsNewSections'". The two errors about `.clipboardHistory` and the key path are
+that same failure losing its contextual type. The helper is now `built(for:)`
+(`1163eaf5`).
+
+Then the re-gate: `TESTS OK (124368 checks)` at `1163eaf5`, exit 0, 279 s, plus
+`PREFERENCE CLEANUP`, `UNINSTALL SPACES` and `DEVELOPER INSTALL ISOLATION` all OK.
+124368 is 28 above 124340, which is the KNU suite.
+
+**The pattern is worth naming, because it is now twice in one afternoon.** Both
+workers produced code that the Linux parser accepted and the Mac compiler
+rejected: an AppKit initialiser that does not exist (`NSRect(x:y:size:)`) and a
+local function shadowed by a local `let`. Syntax-level checking cannot see either
+class. A lane touching AppKit or Swift name resolution is not verified until the
+Mac has compiled it, and `SUBSET OK` is a floor, not a gate.
+
+The cross-review is more useful than the gate. It read the diff as a source
+document and found: the stamp exists only in `CHANGELOG.md`, nowhere in the data
+or the UI; the What's New window has no search field (only Settings search matches
+KNU); a tagged feature's page shows no sentence about what a person can now do,
+because the KNU bullet is deliberately excluded from the digest and the tag carries
+no text; the de-duplication is one-sided, so a bullet naming both a tagged feature
+and a feature with its own sidebar row prints twice - unreachable from today's
+bullets, one changelog sentence away; the test fixture cannot express that shape;
+and the production parser matches a literal ASCII `what's knu` while the test
+helper folds U+2019, so an editor's smart quote turns the KNU bullet into a plain
+`.changed` line with every test still green.
+
+Three of those are cheap and are out in `fix/knu-review-followups`: fold
+typographic apostrophes in the parser, stop rendering `Clipboard history` over
+`Clipboard`, and rewrite the changelog section as prose for the person using the
+build instead of an instruction naming an internal Swift symbol. The rest - the
+date in the UI, search in the window, the feature page being bare, and one-sided
+dedup - are deliberately a separate lane, not silently dropped.
