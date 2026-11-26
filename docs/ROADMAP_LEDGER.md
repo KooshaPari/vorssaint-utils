@@ -330,3 +330,32 @@ typographic apostrophes in the parser, stop rendering `Clipboard history` over
 build instead of an instruction naming an internal Swift symbol. The rest - the
 date in the UI, search in the window, the feature page being bare, and one-sided
 dedup - are deliberately a separate lane, not silently dropped.
+
+## Clip-placement review follow-ups, verified
+
+The four findings from the clip cross-review are fixed and gated: `TESTS OK
+(124373 checks)` at `0e32c835`, exit 0, 280 s, all three auxiliary suites OK.
+124373 is 5 above 124368, which is the new placement guards and their
+assertions.
+
+What changed, in the order the review ranked it. A placement that forces the
+frame no longer writes the remembered origin: `keepsRememberedOrigin` returns
+false for `nearCursor`, `bottomOfScreen` and `topCenter`, and true for
+`remembered` and `dynamicIsland` - the island keeps storing a move because its
+window is the fallback for that placement, which is the sort of exception that
+would be wrong to flatten. The cards layout now says so instead of offering an
+inert picker: `placementIsFixed` disables the picker and swaps in a caption, in
+all 15 languages. Turkish says "Dynamic Island" like the label. And `bottomFrame`
+uses `margin` like the clamp in `resize()`, so toggling the preview no longer
+moves the window 8 pt and back.
+
+Two notes worth keeping. The first gate attempt on `abee650f` failed on the KNU
+shadowing error, not on anything this lane wrote: the branch was cut from
+`0340bbe4`, which predates `1163eaf5`, so a branch cut from a stale base inherits
+the base's compile errors and a red gate is not automatically that lane's fault -
+check the file names before blaming the change. The second is that the worker did
+the honest thing and reported its ceiling: `swiftc -parse` plus a 259-check
+Foundation harness on the real 15-language table, with "every claim about a
+window, a panel or a picker is a reading of the source" stated outright. That is
+the standard here - a parse is not a typecheck, and the report says which one it
+had.
