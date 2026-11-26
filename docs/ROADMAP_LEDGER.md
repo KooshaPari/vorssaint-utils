@@ -885,3 +885,36 @@ is the kind of thing that would otherwise get quietly built on.
 
 No code changed, so there is nothing to gate. P86-1 stays open at the design step until the
 "legible failure" change is written.
+
+### P86-2 and P86-4 written up, and P86-4's disclosure gap was not a gap
+
+Notes at `docs/P86-2-4-SPI-AND-PRIVILEGE.md`.
+
+**P86-2.** The header at `Sources/HIDEventSystem/include/HIDEventSystem.h:1-4` pulls two public IOKit
+headers and two private ones, is wired in as a header-only module (`build.sh:216`), and so links the
+private symbols directly rather than through `dlsym`. That makes the drift failure a **launch
+crash** (missing symbol), not a degraded feature — strictly worse than the MediaRemote path, which
+`dlopens` and can fail soft. Recommendation: load the constructor through `dlopen`/`dlsym` the way
+`NowPlayingSelection.swift:30` already does, so a removed symbol means "linear mouse mode
+unavailable" instead of an app that will not start. Replacing it with the system-wide
+`com.apple.mouse.scaling` preference is a product decision (it costs the per-device behaviour that is
+the feature), not a defect fix.
+
+**P86-4, corrected.** The note was going to ask for a disclosure paragraph. `docs/PERMISSIONS.md:139-145`
+already has one: the sudoers rule, "allows only that single command", saying no keeps the feature
+working with a password, and the rule goes away on uninstall. So the gap is precision, not absence,
+and there are exactly three imprecisions worth fixing: it never says the grant is **passwordless for
+every process of that uid** (the half with security weight), it never prints the rule or its path so
+a user can verify it, and "goes away on its own when you uninstall" is only true for the app's own
+uninstaller — a drag to the Trash leaves `/etc/sudoers.d/vorssaint-clamshell` behind, which is not
+fixable in code and is therefore the sentence that should change.
+
+What the code gets right and should stay: the rule is granted by **uid** rather than username (a
+short name on an SSO-enrolled Mac can be an email address, `SudoersSupport.swift:11-16`), the grant is
+**proven by using it** through `sudo -n` rather than by listing it with `sudo -l`, which reported
+ready while the real call still prompted (`ShellSupport.swift:146-153`), and both commands are
+**argument-exact** at an absolute path.
+
+No code changed in either note, so nothing to gate. Both P86-2 and P86-4 stay open at the design
+step: P86-2's `dlopen` conversion and P86-4's three-sentence correction are each small enough to be
+the next leaves.
