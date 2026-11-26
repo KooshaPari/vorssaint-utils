@@ -597,9 +597,9 @@ the 03906740 run's group output:
 | B window policy | 4 / 4 | B1-B4 |
 | D AI agents | 3 / 6 | D1, D2, D3 shipped; D4, D5, D6 `needs info` |
 | E network | **2 / 2** | E1 and E2 both shipped - the section previously read 0 / 2 |
-| F packaging | 0 / 3 | F1 blocked on notary credentials, F2 follows F1, F3 replaced by a source-derived review |
+| F packaging | **1 / 3** | F3 shipped - six source-derived findings, all dispositioned; F1 still blocked on notary credentials, F2 follows F1 |
 
-That is **21 of 27**, not 19 of 27: the two E rows were shipped work filed as `queued`,
+That is **21 of 27** (and 22 of 27 once F3 closed, see the P86-3 entry), not 19 of 27: the two E rows were shipped work filed as `queued`,
 and E1 had even been through a macOS fix pass (`c0316be3`) after `e41ea061` landed it.
 
 Three status mistakes in one section is a pattern, not bad luck: a row was written as a
@@ -1076,4 +1076,24 @@ recorded where the guard is: while the keychain is unreachable, history stops su
 while the in-memory list keeps working, and there is no visible status for that yet, which belongs
 with P86-4's disclosure work.
 
-That leaves **P86-4 as the last open F3 finding**; F3 stays open and F stays at 0 / 3 until it lands.
+## F3 closes: all six source-derived findings are now dispositioned
+
+With P86-3 delivered, every one of the six findings has an answer that can be pointed at:
+
+| Finding | Disposition | Where |
+| --- | --- | --- |
+| P86-1 now-playing channel | closed: the card says why the channel is broken | `678a72b4` |
+| P86-2 private HID SPI | closed: six symbols resolve or withdraw | `2560553e` |
+| P86-3 clipboard at rest | closed: AES-GCM under a ThisDeviceOnly key | `687a9367`, `440c6f69`, `fdf7c416` |
+| P86-4 passwordless-root grant | disclosure corrected; the grant itself is a scheduled project, not a fix | `6dbacb8a`, `docs/P86-2-4-SPI-AND-PRIVILEGE.md` |
+| P86-5 keychain accessibility | closed at `change_made`: `ThisDeviceOnly` on the secret writer | recorded above |
+| P86-6 main-thread taps | corrected: the taps already recover, and the deadlock class was the defect | recorded above |
+
+"Dispositioned" is the honest word for two of these and not a euphemism for "fixed". P86-4's
+standing per-uid grant still exists, because option A was a documentation defect and option B (a
+signed privileged helper replacing the sudoers file) is a project that should be scheduled rather
+than slipped into a fix commit. P86-5 was verified at source level, not by observing a restore onto
+a second Mac. Both are stated in their own entries rather than averaged away here.
+
+F3 moves to shipped, so **F is 1 / 3**: F1 is still blocked on notary credentials and F2 still
+follows F1. The tally becomes **22 of 27**.

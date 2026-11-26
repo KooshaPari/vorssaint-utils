@@ -123,8 +123,8 @@ Two things happened in response, and they are different kinds of proof:
 What remains unobserved is only the keychain lookup inside `seal(_:)` / `open(_:)` on macOS, which
 a GUI session will exercise and no automated run here can. The consequence of it failing is written
 where the guard is: while the keychain is unreachable, history stops surviving relaunches and the
-in-memory list keeps working. There is no visible status for it yet. That belongs with P86-4's
-disclosure work rather than invented here.
+in-memory list keeps working. There is no visible status for it yet; inventing one here would be a
+UI change smuggled into a crypto change, so it is named and left.
 
 Export, inspection and support debugging all get harder: a sealed history is opaque to a user who
 wants to read it. That trade was made deliberately (operator default on the P86-3 shape question:
