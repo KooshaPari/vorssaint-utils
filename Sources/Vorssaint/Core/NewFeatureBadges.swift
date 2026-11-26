@@ -10,6 +10,11 @@ enum NewFeatureBadges {
     /// Tagged for this build:
     /// - clipboard history: paste without formatting (⌥-click, ⌥⇧↩, menu item)
     ///   and a persisted pause.
+    ///
+    /// The changelog's `### What's KNU` list reads only what a person sees, so
+    /// the maintenance rule lives here instead of in that section: the tag and
+    /// the list must name the same features. `NewFeatureBadgesTests` fails when
+    /// one is added without the other, in either direction.
     static let tagged: Set<AppFeature> = [.clipboardHistory]
 
     static func isNew(_ feature: AppFeature) -> Bool {

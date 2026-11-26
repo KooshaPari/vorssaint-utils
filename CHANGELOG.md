@@ -10,7 +10,7 @@ All notable changes to this project are documented here. The format follows
 This update improves microphone muting, display controls, window switching, clipboard history and screenshots.
 
 ### What's KNU
-What's new for a person using this build, one line per feature tagged `NewFeatureBadges.tagged`, with the moment it became new. The tag and this list must name the same features.
+What's new in this build, one line per feature, with the moment it became new.
 
 - **Clipboard history** (`clipboardHistory`): paste without formatting with ⌥-click, ⌥⇧↩ or the menu item, and pause history from the panel, which survives a restart. New as of 2026-11-26T10:57Z.
 
