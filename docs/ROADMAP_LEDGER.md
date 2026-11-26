@@ -1024,3 +1024,56 @@ signatures were taken from `swiftc -typecheck` against the real headers rather t
 symbol, and there is none; what is proven is that the interfaces resolve, that no call site bypasses
 the shim, and that the acceleration mode consults the shim's own answer before offering itself.
 
+
+## P86-3 closed: the clipboard history is encrypted at rest
+
+**Three commits, `687a9367` → `440c6f69` → `fdf7c416`. Final gate `TESTS OK (124552 checks)`,
+`FULL_RC=0`, 0 failure markers, all three shell suites OK.** Design and delivery record:
+`docs/P86-3-CLIPBOARD-AT-REST.md`.
+
+Copied text and copied images no longer sit in Application Support as plaintext. History entries
+and image blobs are sealed with AES-256-GCM under a key held in the login keychain at
+`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, so the key does not travel to another Mac in a
+backup. The stored blob is a small crypto-free envelope (version byte, nonce, ciphertext, tag), and
+the envelope type is separate from the cipher so the layout can be inspected on Linux, where
+CryptoKit does not exist. Three call sites were moved onto the sealed path, and the image read path
+went from a file URL to bytes because that is the only way to reach the cipher.
+
+**The delta is exactly attributable.** Baseline 124511 → 124552 is +41: 36 suite checks at the
+first commit minus one dropped in the rewrite (124548 → 124547) plus five round-trip checks
+(124547 → 124552), and one PreferenceNamespaceTests check for the new test file, which it emits per
+discovered Swift file. The suite reports `clipboard-at-rest: OK (40 checks)` = 11 envelope + 4
+passthrough + 7 bounds + 13 wiring + 5 round trip. Linux subset is 177 checks, was 142; the
+round-trip block is compiled out there, so Linux carries 35 of the 40.
+
+**The wiring suite was proved to bite rather than assumed.** Reverting the image read path to
+`return raw` turned the subset `FAILED (13 checks)` / `SUBSET FAILED (1 of 178)` at
+`Tests/ClipboardHistoryAtRestTests.swift:145`, and reverting the revert turned it green.
+
+**Gate attempt one failed two checks, and the failure was correct.** `this platform can seal` and
+`two seals of the same bytes differ` failed because an ssh-launched test process has no login
+keychain. Measured rather than guessed: a small `xcrun swift` probe on the same host returned
+`SecRandomCopyBytes` = 0, `SecItemAdd` = **-25308** (`errSecInteractionNotAllowed`),
+`SecItemRead` = **-25300** (`errSecItemNotFound`). The test had been asserting the environment.
+It was rewritten to seal once and assert from the answer, so both worlds now assert the rule that
+actually matters: when a seal is attempted and fails, nothing is written in cleartext.
+
+**Then the honest problem was that nothing had observed the encryption.** The rewritten suite
+exercised the failure branch on macOS and the unsupported branch on Linux, so AES-GCM through this
+code had been asserted by nobody. Hence `seal(_:using:)` and `open(_:using:)`, which take a
+caller-held key; the application path resolves its keychain key and calls them, unchanged in shape.
+The suite now generates a key and checks the frame header, the round trip, that a second seal of
+the same bytes differs, that a different key returns nil, and that one flipped tag byte returns nil.
+
+**Three gate runs, and the third is justified rather than budgeted away.** Runs one and two belong
+to the feature commit and its fix; run three belongs to a separate commit whose whole purpose was
+to produce the observation runs one and two could not. Attempt two passed every check it contained,
+so re-reading it could not have told anyone whether the cipher worked.
+
+**Unproven, and named:** the keychain lookup inside `seal(_:)` and `open(_:)` on macOS. Only a GUI
+session with a logged-in keychain exercises it, and no automated run here can. The consequence is
+recorded where the guard is: while the keychain is unreachable, history stops surviving relaunches
+while the in-memory list keeps working, and there is no visible status for that yet, which belongs
+with P86-4's disclosure work.
+
+That leaves **P86-4 as the last open F3 finding**; F3 stays open and F stays at 0 / 3 until it lands.
