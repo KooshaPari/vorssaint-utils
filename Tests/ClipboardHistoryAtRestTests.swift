@@ -70,20 +70,27 @@ enum ClipboardHistoryAtRestTests {
             suite.expect(corrupted.flatMap { ClipboardHistoryCipher.open($0) } == nil,
                          "a sealed blob that does not open is nil, not garbage")
 
-            if ClipboardHistoryCipher.isSupported {
-                suite.expect(ClipboardHistoryCipher.seal(plaintext) != nil,
-                             "this platform can seal")
+            // Sealing needs the login keychain, which a test process may not
+            // have. Both worlds are asserted, because the rule that matters is
+            // the same in each: when sealing is attempted and fails, nothing
+            // is written in cleartext.
+            let sealed = ClipboardHistoryCipher.seal(plaintext)
+            if let sealed {
+                suite.expect(sealed != plaintext && ClipboardHistoryEnvelope.isSealed(sealed),
+                             "a sealed blob carries the frame header")
+                suite.expect(ClipboardHistoryCipher.open(sealed) == plaintext,
+                             "a sealed blob opens back to its bytes")
                 // Sealing twice must not produce the same bytes: the nonce is
                 // fresh each time, so a copy of one ciphertext teaches nothing
                 // about an identical entry elsewhere in the history.
-                suite.expect(ClipboardHistoryCipher.seal(plaintext)
-                                != ClipboardHistoryCipher.seal(plaintext),
+                suite.expect(ClipboardHistoryCipher.seal(plaintext) != sealed,
                              "two seals of the same bytes differ")
+            } else if ClipboardHistoryCipher.isSupported {
+                suite.expect(ClipboardHistoryCipher.sealOrPassThrough(plaintext) == nil,
+                             "a failed seal is nil, never the plaintext")
             } else {
-                suite.expect(ClipboardHistoryCipher.seal(plaintext) == nil,
-                             "an unsupported platform never claims to seal")
                 suite.expect(ClipboardHistoryCipher.sealOrPassThrough(plaintext) == plaintext,
-                             "an unsupported platform writes bytes through unchanged")
+                             "a platform without the API writes bytes through unchanged")
             }
         }
 

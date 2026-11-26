@@ -1335,7 +1335,9 @@ final class ClipboardHistoryService: ObservableObject {
             // rather than falling back: the file this would replace may
             // already be encrypted, and a cleartext write here would be a
             // silent downgrade of the whole history. Losing one save is
-            // recoverable; leaving the history readable is not.
+            // recoverable; leaving the history readable is not. The visible
+            // cost is that history stops surviving relaunches while the
+            // keychain is unreachable; the in-memory list keeps working.
             guard let data = ClipboardHistoryCipher.sealOrPassThrough(encoded.data) else { return }
             // The PNG sweep waits for the JSON to land and runs back on the
             // main thread against the list as it is then. Sweeping first

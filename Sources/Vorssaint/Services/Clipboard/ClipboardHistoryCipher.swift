@@ -25,8 +25,10 @@ import Security
 /// - `openOrPassThrough` returns an unsealed blob unchanged. That is how a file
 ///   written before this existed stays readable while it is still on disk.
 enum ClipboardHistoryCipher {
-    /// Whether this build can encrypt at all. Linux cannot, and the clipboard
-    /// suite runs there, so callers ask instead of assuming.
+    /// Whether this build can encrypt at all, which is a compile-time fact.
+    /// Whether a key can actually be obtained is a runtime one: a process
+    /// without the login keychain seals nothing. Callers therefore check the
+    /// result of `seal` rather than assuming from this flag.
     static let isSupported = true
 
     private static let service = (Bundle.main.bundleIdentifier ?? "com.vorssaint.app")
