@@ -83,6 +83,18 @@ enum ClipboardSurfacePlacement: String, CaseIterable {
         defaults.string(forKey: DefaultsKey.clipboardHistoryPlacement)
             .flatMap(Self.init(rawValue:)) ?? fallback
     }
+
+    /// Whether a stored place is worth writing. `frame(for:)` reads the stored
+    /// place back for the remembered placement and for the island, whose
+    /// window is its fallback, so those two keep storing a move; a forced
+    /// placement opens where it says every time, and storing its frame would
+    /// replace the place the person chose by dragging.
+    static func keepsRememberedOrigin(_ placement: ClipboardSurfacePlacement) -> Bool {
+        switch placement {
+        case .remembered, .dynamicIsland: return true
+        case .nearCursor, .bottomOfScreen, .topCenter: return false
+        }
+    }
 }
 
 enum ClipboardHistoryWindowPlacement {
@@ -162,14 +174,19 @@ enum ClipboardHistoryWindowPlacement {
     }
 
     /// A window of its own size centred along the bottom edge of the display,
-    /// at the same height as the shelf of cards. Only the width can need
-    /// keeping inside the display, so the height is not moved off the inset.
+    /// with the same gap the resize clamp leaves, so opening the preview does
+    /// not shift it. Only the width can need keeping inside the display: the
+    /// clamps apply to the origin, then the height is taken from the margin on
+    /// purpose, because the size arriving here is already capped to the
+    /// display by `preferredPanelSize`, so the bottom edge cannot fall out of
+    /// the display and the window is never lifted off the edge it was placed
+    /// on.
     static func bottomFrame(size: NSSize, visibleFrame: NSRect) -> NSRect {
         let origin = clamped(origin: NSPoint(x: visibleFrame.midX - size.width / 2,
-                                             y: visibleFrame.minY + shelfInset),
+                                             y: visibleFrame.minY + margin),
                              size: size, visibleFrame: visibleFrame)
         return NSRect(x: origin.x,
-                      y: visibleFrame.minY + shelfInset,
+                      y: visibleFrame.minY + margin,
                       width: size.width,
                       height: size.height)
     }

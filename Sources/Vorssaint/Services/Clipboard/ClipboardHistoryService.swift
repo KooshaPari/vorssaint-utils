@@ -1619,7 +1619,13 @@ final class ClipboardHistoryService: ObservableObject {
     }
 
     private func savePanelPosition(_ panel: NSPanel) {
-        guard panel.isVisible, quickLayout == .list, !adjustingPanelFrame else { return }
+        // Only a place the next opening reads back is worth storing, so a
+        // placement that forces the frame can never replace the place the
+        // person chose by dragging.
+        guard panel.isVisible, quickLayout == .list, !adjustingPanelFrame,
+              ClipboardSurfacePlacement.keepsRememberedOrigin(
+                  ClipboardSurfacePlacement.current(in: UserDefaults.standard))
+        else { return }
         UserDefaults.standard.set(Double(panel.frame.minX), forKey: DefaultsKey.clipboardHistoryWindowX)
         UserDefaults.standard.set(Double(panel.frame.minY), forKey: DefaultsKey.clipboardHistoryWindowY)
     }

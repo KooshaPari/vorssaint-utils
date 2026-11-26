@@ -238,6 +238,28 @@ enum ClipboardFeatureTests {
         suite.expect(screen.contains(fallback) && abs(fallback.midX - screen.midX) < 1
                      && savedFrame() == otherFrame,
                      "disconnecting the saved display falls back without replacing the user's position")
+
+        // A placement that forces the frame opens in the same place every
+        // time, so the frame it was moved to is not a place the next opening
+        // reads back.
+        host.quickLayout = .list
+        host.position(panel)
+        let rememberedPlace = savedFrame()
+        for forced in [ClipboardSurfacePlacement.nearCursor, .bottomOfScreen, .topCenter] {
+            defaults.set(forced.rawValue, forKey: DefaultsKey.clipboardHistoryPlacement)
+            panel.setFrameOrigin(NSPoint(x: 400, y: 320))
+            notify(NSWindow.didMoveNotification)
+            notify(NSWindow.didEndLiveResizeNotification)
+            suite.expect(savedFrame().origin == rememberedPlace.origin,
+                         "moving by hand under \(forced.rawValue) leaves the remembered place alone")
+        }
+        defaults.set(ClipboardSurfacePlacement.remembered.rawValue,
+                     forKey: DefaultsKey.clipboardHistoryPlacement)
+        panel.setFrameOrigin(NSPoint(x: 400, y: 320))
+        notify(NSWindow.didMoveNotification)
+        suite.expect(savedFrame().origin == NSPoint(x: 400, y: 320),
+                     "the remembered placement still saves the move the user makes by hand")
+        defaults.removeObject(forKey: DefaultsKey.clipboardHistoryPlacement)
         for invalid in [Double.infinity, -Double.infinity, Double.nan] {
             defaults.set(invalid, forKey: DefaultsKey.clipboardHistoryWindowX)
             reopen()
@@ -324,9 +346,9 @@ enum ClipboardFeatureTests {
         choose(.bottomOfScreen)
         host.position(panel)
         suite.expect(panel.frame == NSRect(x: screen.midX - size.width / 2,
-                                          y: screen.minY + 8,
+                                          y: screen.minY + 16,
                                           width: size.width, height: size.height),
-               "the bottom placement sits at the shelf's height: \(panel.frame)")
+               "the bottom placement keeps the gap a resize leaves at the bottom edge: \(panel.frame)")
         choose(.topCenter)
         host.position(panel)
         suite.expect(panel.frame == centredUnderMenuBar,
@@ -416,7 +438,8 @@ enum ClipboardFeatureTests {
             suite.expect(!strings.title.isEmpty
                    && ClipboardSurfacePlacement.allCases.allSatisfy {
                        !strings.label(for: $0).isEmpty && !strings.caption(for: $0).isEmpty
-                   },
+                   }
+                   && !strings.cardsCaption.isEmpty,
                    "\(language.rawValue) names and explains every placement")
             guard language != .enUS else { continue }
             let english = FeatureStrings.clipboardPlacement(.enUS)
@@ -425,12 +448,24 @@ enum ClipboardFeatureTests {
                        .bottomOfScreen, .topCenter].allSatisfy {
                        strings.label(for: $0) != english.label(for: $0)
                        && strings.caption(for: $0) != english.caption(for: $0)
-                   },
+                   }
+                   && strings.cardsCaption != english.cardsCaption,
                    "\(language.rawValue) translates the placement labels and their explanations")
         }
         suite.expect(FeatureStrings.clipboardPlacement(.enUS).label(for: .dynamicIsland)
                         == FeatureStrings.clipboardPlacement(.ja).label(for: .dynamicIsland),
                "the island keeps its product name in every language")
+        let cardsText = FeatureStrings.clipboardPlacement(.enUS)
+        suite.expect([ClipboardSurfacePlacement.nearCursor, .remembered,
+                      .bottomOfScreen, .topCenter].allSatisfy {
+                       ClipboardPlacementStrings.placementIsFixed(cardsLayout: true, placement: $0)
+                       && cardsText.caption(for: $0, cardsLayout: true) == cardsText.cardsCaption
+                       && cardsText.caption(for: $0, cardsLayout: false) == cardsText.caption(for: $0)
+                   }
+                   && !ClipboardPlacementStrings.placementIsFixed(cardsLayout: true,
+                                                                placement: .dynamicIsland)
+                   && cardsText.caption(for: .dynamicIsland, cardsLayout: true) == cardsText.islandCaption,
+               "the cards layout explains that it places itself instead of naming a place it will not use")
     }
 
     static func run(_ suite: TestSuite) {
