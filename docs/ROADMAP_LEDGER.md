@@ -963,3 +963,20 @@ reported on the process, not the gate). The log's terminal state is clean by eve
 emits, but no `EXIT=0` was recorded, so this is `workflow_validated`, not `outcome_delivered`: nothing
 has yet been observed at runtime — no real media player, no real log stream, no reading of
 Console.app.
+
+## P86-1 closed: the empty card says why
+
+**`678a72b4`, gate `TESTS OK (124491 checks)`, 0 failure markers.** The Now Playing channel now
+distinguishes "nothing is playing" from "the channel is broken" everywhere a user can see it, not
+only in Console.app. `.unavailable` is a fourth radial state, drawn by the notch card, the notch
+compact strip and the wheel label, with the label present in all 16 language tables.
+
+Twelve new checks, and the baseline moved by exactly twelve. The surface group is real RED against
+the pre-change tree (8 of 9 fail); the reporter's three new checks are not, because `showsUnavailable`
+existed before the test that asserts it, and saying otherwise would be invention.
+
+**A flake was found and named rather than retried away.** `RecorderFastGIFExportTests.swift:27` waits
+240 s for a GPU GIF export. Under load average 11.26 the suite took 287.96 s and failed; on the same
+commit minutes later it took 54.94 s and passed. A wall-clock deadline on a shared laptop is a load
+detector, not a correctness test, and the number to watch is the suite duration in the log, which is
+printed either way.

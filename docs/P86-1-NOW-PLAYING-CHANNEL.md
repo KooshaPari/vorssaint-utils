@@ -134,8 +134,25 @@ unreadable reply instead of collapsing all three into `completion(nil)`
 silent repeat, class change, post-success re-arm, distinct summaries, no normal-state case) and 9
 checks read both call sites, which are the ones that fail against the pre-fix tree.
 
-**Still open in A:** the notch and the wheel still show nothing to a user who is not reading
-Console.app. The remaining half is a UI surface: the notch's now-playing empty state and the wheel's
-card should say playback is unavailable when `lastReportedFailure != nil`, and
-`docs/TROUBLESHOOTING.md` should gain the Console.app filter (`category:now-playing`). That is the
-next leaf, and it is why this item stays open rather than closed.
+**Closed in `678a72b4`:** the user-facing half shipped. `RadialNowPlayingState` gained a fourth case,
+`.unavailable`, selected when the reporter holds a failure
+(`RadialNowPlayingService.swift:34-35`), and all three surfaces draw it: the notch card empty state
+and its compact strip (`NotchMusicView.swift:163-180`, `:794-799`), and the wheel item label
+(`RadialMenuView.swift:476`). The label is localised in all 16 language tables — a count of
+`mediaPlaybackUnavailable:` against `mediaNothingPlaying:` in `RadialMenuStrings.swift` is what the
+test asserts, because a table left out falls back to nothing at all.
+
+`Tests/NowPlayingBridgeTests.swift` grew a fourth group, `now-playing-unavailable-surfaces` (9
+checks). It is real RED: against the pre-change tree it fails 8 of 9, and the ninth is what
+established that the wheel ships 16 language tables rather than 15.
+
+**Known limitation, stated rather than hidden:** the notch reads the reporter at render time, so a
+failure arriving while an idle card is already on screen appears on the next render rather than
+immediately. The dominant path is already correct — the fetch that fails is the same one that
+empties the card, and the body has not been evaluated for that state yet.
+
+**Gate: `TESTS OK (124491 checks)` @ `678a72b4`, 0 failure markers**, all three shell suites OK.
+That is baseline `124479` plus exactly the 12 new checks. The first attempt on this commit failed
+one check, `RecorderFastGIFExportTests.swift:27`, a 240-second wall-clock deadline whose suite took
+287.96 s under load average 11.26; the second attempt ran the same suite in 54.94 s and passed. Same
+commit, same test, 5× the duration — that is load, not a regression, and now a known flake.
