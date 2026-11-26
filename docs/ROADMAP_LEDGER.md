@@ -784,3 +784,41 @@ Honest status: `change_made`. This is correctness by construction with no fixtur
 "this call happens on the tap thread" is not expressible in a test, and `FinderCutPaste`
 imports AppKit so the Linux subset cannot compile it. The timeout re-enable above is the
 runtime behaviour that would show a regression on the Mac, and it is untouched.
+
+### P86-3 scoped, and the cheap half of it closed
+
+The P86-3 finding as written ("clipboard text and image blobs persisted unencrypted under
+Application Support") is right about the bytes and wrong about the exposure, so it was re-scoped
+by reading the two writers instead of restating it.
+
+`PrivateFileStore` already sets `0o700`/`0o600` and re-tightens the whole chain on every create,
+so no other *account* can read the container and there is no world/group mode to fix. What was
+actually open: the container sits in the Time Machine set, so a restore onto a different Mac
+carries the entire clipboard history and the shelf with it, and nothing in the tree excluded it.
+Also open, and not fixed here: any process running as the same user reads it, there is no crypto
+anywhere in the clipboard path, and text expiry rewrites the JSON blob without overwriting the
+previous bytes.
+
+Shipped: `PrivateFileStore` now sets `URLResourceValues.isExcludedFromBackup` on every directory
+in the chain and on every written file, via one `excludeFromBackup(_:)` called from both paths —
+both, for the same reason the mode is re-applied: a container built by an earlier version heals
+on next use instead of needing a migration.
+
+Guard: `private-file-store-backup-exclusion`, 3 assertions, inside `Tests/SMBSharesTests.swift`
+rather than a new suite, so `build.sh` group list and `LinuxSubsetCheck.sh` SUITES are both
+unchanged and the guard runs on Linux. It reads `PrivateFileStore.swift` as text, which is all
+the subset can do: `isExcludedFromBackup` does not exist in corelibs-foundation.
+
+RED→GREEN against `git show HEAD:`: `FAILED (3 checks)` / `SUBSET FAILED (3 of 88)` / EXIT=1, with
+"found 0 call sites" proving the call-site assertion is not vacuous; post-fix `OK (3 checks)` /
+`SUBSET OK (88 checks)` / EXIT=0. Totals 85 → 88.
+
+Left as an operator decision: encrypting the history with a device-bound keychain key (reusing
+`AgentSecretAccessibility.item` from P86-5). It is a product call — an opaque history file costs
+export, inspection and support debugging — and its decrypt-failure path cannot be honestly tested
+without the Mac.
+
+Status `change_made`, ungated. The scoping lane's worker died on the same
+`opencode-go:deepseek-v4.1-flash` mid-stream failure as the earlier ones, so this scope and its
+fix were done directly in the lane checkout; `kooshas-laptop` remains offline and no macOS result
+exists for any of the four prior commits either.

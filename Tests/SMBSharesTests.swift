@@ -375,6 +375,29 @@ enum SMBSharesTests {
                              "the smb update path carries the device-bound class")
             }
         }
+
+        // Owner-only modes stop another account reading the container; they do
+        // nothing about Time Machine, which copies Application Support onto a
+        // backup volume and from there onto any Mac restored from it. Both the
+        // directory chain and each written file must carry the exclusion flag.
+        suite.run("private-file-store-backup-exclusion") {
+            guard let store = SMBSharesTests.sourceText("Sources/Vorssaint/Services/PrivateFileStore.swift") else {
+                suite.expect(false, "private file store: source not found")
+                return
+            }
+            suite.expect(store.contains("isExcludedFromBackup = true"),
+                         "the store marks its material excluded from backup")
+            suite.expect(store.contains("URLResourceValues()"),
+                         "the exclusion is set through resource values, not an xattr string")
+
+            // Called from both creation and write, so a container or file left
+            // behind by an earlier build heals on the next use.
+            let callSites = store
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { $0.contains("excludeFromBackup(") && !$0.contains("static func") }
+            suite.expect(callSites.count >= 2,
+                         "the exclusion is applied on both directory creation and file write, found \(callSites.count) call sites")
+        }
     }
 
     /// Resolve a repo-relative source path from either the test file's own

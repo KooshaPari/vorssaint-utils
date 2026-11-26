@@ -40,8 +40,22 @@ enum PrivateFileStore {
         for directory in directoriesToTighten(from: url, container: container) {
             try? manager.setAttributes([.posixPermissions: directoryPermissions],
                                        ofItemAtPath: directory.path)
+            excludeFromBackup(directory)
         }
         return true
+    }
+
+    /// Owner-only mode stops another account reading this material. It does
+    /// nothing about Time Machine, which copies `~/Library/Application Support`
+    /// like any other user data, so a restore onto a different Mac would carry
+    /// the clipboard history and the shelf with it. The flag is set on every
+    /// write rather than once at creation, for the same reason the mode is:
+    /// a container from an earlier version has to heal itself.
+    private static func excludeFromBackup(_ url: URL) {
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var mutable = url
+        try? mutable.setResourceValues(values)
     }
 
     /// Atomic, owner-only write. `.atomic` swaps in a freshly created file, so
@@ -51,6 +65,7 @@ enum PrivateFileStore {
         guard (try? data.write(to: url, options: .atomic)) != nil else { return false }
         try? FileManager.default.setAttributes([.posixPermissions: filePermissions],
                                                ofItemAtPath: url.path)
+        excludeFromBackup(url)
         return true
     }
 
