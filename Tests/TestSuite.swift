@@ -9,6 +9,13 @@ final class TestSuite {
     private let lock = NSLock()
     private(set) var checks = 0
     private(set) var failures: [String] = []
+    /// Where a group's line goes. Overridable only so a test can observe the
+    /// line without capturing stdout; a real run keeps `print`.
+    var lineSink: (String) -> Void = { print($0) }
+    /// How many `run` bodies are currently on the stack. A group whose body
+    /// runs another group is nested, and its line is indented so it reads as a
+    /// component of its parent rather than a sibling top-level group.
+    private var depth = 0
 
     func expect(_ condition: Bool, _ message: @autoclosure () -> String,
                 file: StaticString = #filePath, line: UInt = #line) {
@@ -30,11 +37,15 @@ final class TestSuite {
         let before = checks
         let previousFailures = failures.count
         let started = ProcessInfo.processInfo.systemUptime
+        let level = depth
+        depth += 1
         body()
+        depth -= 1
         if checks == before { expect(false, "\(name) executed no assertions") }
         let elapsed = ProcessInfo.processInfo.systemUptime - started
         let status = failures.count == previousFailures ? "OK" : "FAILED"
-        print("\(name): \(status) (\(checks - before) checks, \(String(format: "%.2f", elapsed))s)")
+        let indent = String(repeating: "  ", count: level)
+        lineSink("\(indent)\(name): \(status) (\(checks - before) checks, \(String(format: "%.2f", elapsed))s)")
     }
 
     func finish() -> Never {
@@ -93,5 +104,33 @@ enum TestHarnessTests {
                                 against: base, name: "fixture", suite: revisedText)
         suite.expect(revisedText.failures.isEmpty,
                      "valid editorial changes and safe argument reordering remain allowed")
+        nestingContract(suite)
+    }
+
+    /// A nested group's line is indented under its parent, and its checks are
+    /// also part of the parent's printed delta, so summing every printed line
+    /// over-counts. Both facts are pinned here rather than left in a comment.
+    static func nestingContract(_ suite: TestSuite) {
+        let probe = TestSuite()
+        var lines: [String] = []
+        probe.lineSink = { lines.append($0) }
+        probe.run("outer") {
+            probe.expect(true, "outer assertion")
+            probe.run("inner") { probe.expect(true, "inner assertion") }
+        }
+        suite.expect(lines.count == 2, "one line per run at any depth (got \(lines.count))")
+        guard lines.count == 2 else { return }
+        suite.expect(lines[0].hasPrefix("  inner: OK"), "nested line is indented: \(lines[0])")
+        suite.expect(lines[1].hasPrefix("outer: OK"), "top-level line is not indented: \(lines[1])")
+        suite.expect(probe.checks == 2, "each assertion increments the counter once across nesting")
+
+        let deltas = lines.compactMap { line -> Int? in
+            guard let open = line.firstIndex(of: "("),
+                  let bound = line.range(of: " checks") else { return nil }
+            return Int(line[line.index(after: open)..<bound.lowerBound])
+        }
+        suite.expect(deltas == [1, 2], "printed deltas are the nested 1 and the parent 2: \(deltas)")
+        suite.expect(deltas.reduce(0, +) > probe.checks,
+                     "summed line deltas \(deltas.reduce(0, +)) exceed the suite total \(probe.checks)")
     }
 }
