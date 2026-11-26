@@ -3,6 +3,7 @@
 
 import AppKit
 import Foundation
+import os
 import SwiftUI
 
 /// A session-scoped view of macOS Now Playing. The read itself lives in the
@@ -340,6 +341,17 @@ enum RadialNowPlayingApplication {
 /// missing script or library, a failed run, a timeout and malformed output
 /// all read as an empty playback session.
 private final class MediaRemoteNowPlayingBridge {
+    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "vorssaint",
+                                    category: "now-playing")
+
+    /// A failure class is written once per change, so a broken channel is
+    /// legible in Console.app without a line per wheel open.
+    private static func reportFailure(_ failure: NowPlayingBridgeFailure) {
+        NowPlayingBridgeFailureReporter.shared.report(failure) { message in
+            Self.log.error("\(message, privacy: .public)")
+        }
+    }
+
     private let queue = DispatchQueue(label: "com.vorssaint.radial-now-playing", qos: .userInitiated)
     /// 2 s: a cold perl load measured 500 ms with no session playing, and a
     /// real reply adds the MediaRemote round trip plus up to 16 MB of base64
@@ -354,6 +366,7 @@ private final class MediaRemoteNowPlayingBridge {
               let library = Bundle.main.privateFrameworksURL?
                 .appendingPathComponent("libVorssaintNowPlaying.dylib"),
               FileManager.default.fileExists(atPath: library.path) else {
+            Self.reportFailure(.assetsMissing)
             completion(nil)
             return
         }
@@ -361,11 +374,24 @@ private final class MediaRemoteNowPlayingBridge {
             let result = BoundedProcessRunner.run("/usr/bin/perl", [script.path, library.path],
                                                   timeout: Self.replyTimeout,
                                                   maxOutputBytes: RadialNowPlayingSupport.maximumAdapterReplyBytes)
-            guard result.status == 0, !result.timedOut,
-                  let reply = RadialNowPlayingSupport.adapterReply(from: result.output) else {
+            if result.timedOut {
+                Self.reportFailure(.timedOut)
                 completion(nil)
                 return
             }
+            guard result.status == 0 else {
+                Self.reportFailure(.processFailed)
+                completion(nil)
+                return
+            }
+            guard let reply = RadialNowPlayingSupport.adapterReply(from: result.output) else {
+                Self.reportFailure(.malformedReply)
+                completion(nil)
+                return
+            }
+            // A readable reply proves the channel works, so the next failure is
+            // written even when it repeats the class reported before.
+            NowPlayingBridgeFailureReporter.shared.recordSuccess()
             let isPlaying = RadialNowPlayingSupport.playbackIsActive(
                 remoteIsPlaying: reply.isPlaying, info: reply.info)
             completion(RadialNowPlayingSupport.snapshot(info: reply.info,

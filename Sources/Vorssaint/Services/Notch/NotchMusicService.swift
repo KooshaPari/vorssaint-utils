@@ -3,6 +3,7 @@
 
 import AppKit
 import Combine
+import os
 
 final class NotchMusicService: ObservableObject {
     static let shared = NotchMusicService()
@@ -91,10 +92,24 @@ final class NotchMusicService: ObservableObject {
 
     private init() {}
 
+    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "vorssaint",
+                                    category: "now-playing")
+
+    /// The notch used to stop silently when the adapter was missing, which
+    /// reads as "no music" rather than "the channel is broken".
+    private static func reportFailure(_ failure: NowPlayingBridgeFailure) {
+        NowPlayingBridgeFailureReporter.shared.report(failure) { message in
+            Self.log.error("\(message, privacy: .public)")
+        }
+    }
+
     private static var adapter: [String]? {
         guard let script = Bundle.main.url(forResource: "now-playing", withExtension: "pl"),
               let library = Bundle.main.privateFrameworksURL?.appendingPathComponent("libVorssaintNowPlaying.dylib"),
-              FileManager.default.fileExists(atPath: library.path) else { return nil }
+              FileManager.default.fileExists(atPath: library.path) else {
+            reportFailure(.assetsMissing)
+            return nil
+        }
         return [script.path, library.path]
     }
 
