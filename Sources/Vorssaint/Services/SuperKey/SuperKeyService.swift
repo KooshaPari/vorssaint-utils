@@ -48,6 +48,9 @@ final class SuperKeyService: ObservableObject {
     var isHeld: Bool { stateLock.withLock { state.isHeld } }
 
     private let hidutilPath = "/usr/bin/hidutil"
+    /// The private interface, held as a dependency rather than looked up at each
+    /// use, so a test double can answer in its place.
+    private let hid = HIDEventSystemShim.shared
     /// Matches every keyboard, including one plugged in later.
     private let keyboardMatch = "keyboard"
 
@@ -919,20 +922,19 @@ final class SuperKeyService: ObservableObject {
     /// Only a keyboard that still has a native Caps Lock needs a corrective
     /// write. A system-wide reset here would undo a solo tap on another device.
     private func clearUnmappedCapsLock(reportedOn: Bool) {
-        let shim = HIDEventSystemShim.shared
-        guard let client = shim.makeClient() else { return }
+        guard let client = hid.makeClient() else { return }
         // The services read and write properties through their client's connection.
         defer { withExtendedLifetime(client) {} }
-        let services = shim.services(of: client) ?? []
+        let services = hid.services(of: client) ?? []
         for keyboard in services {
-            guard shim.conformsTo(keyboard,
-                                  page: UInt32(kHIDPage_GenericDesktop),
-                                  usage: UInt32(kHIDUsage_GD_Keyboard)) == true else { continue }
-            let mapping = shim.property(keyboard, SuperKeySupport.userMappingProperty as CFString)
+            guard hid.conformsTo(keyboard,
+                                 page: UInt32(kHIDPage_GenericDesktop),
+                                 usage: UInt32(kHIDUsage_GD_Keyboard)) == true else { continue }
+            let mapping = hid.property(keyboard, SuperKeySupport.userMappingProperty as CFString)
             guard SuperKeySupport.hasNativeCapsLock(in: mapping) else { continue }
             let lockKey = "HIDCapsLockState" as CFString
-            if reportedOn || shim.property(keyboard, lockKey) as? Bool != false {
-                _ = shim.setProperty(keyboard, lockKey, kCFBooleanFalse)
+            if reportedOn || hid.property(keyboard, lockKey) as? Bool != false {
+                _ = hid.setProperty(keyboard, lockKey, kCFBooleanFalse)
             }
         }
     }

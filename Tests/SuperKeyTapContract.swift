@@ -139,26 +139,29 @@ enum SuperKeyTapContract {
         }
         /// Present, so production's single route to the private interface keeps
         /// compiling here verbatim. Each call lands on the recording fakes above,
-        /// so the counters still see exactly what production asked for.
+        /// through the owning state, so the counters still see exactly what
+        /// production asked for.
         final class HIDEventSystemShim {
-            static let shared = HIDEventSystemShim()
+            unowned let owner: State
+            init(owner: State) { self.owner = owner }
             var isAvailable: Bool { true }
             func makeClient() -> EventSystemClient? {
-                IOHIDEventSystemClientCreateSimpleClient(nil)
+                owner.IOHIDEventSystemClientCreateSimpleClient(nil)
             }
             func services(of client: EventSystemClient) -> [Keyboard]? {
-                IOHIDEventSystemClientCopyServices(client) as? [Keyboard]
+                owner.IOHIDEventSystemClientCopyServices(client) as? [Keyboard]
             }
             func conformsTo(_ keyboard: Keyboard, page: UInt32, usage: UInt32) -> Bool? {
-                IOHIDServiceClientConformsTo(keyboard, page, usage) != 0
+                owner.IOHIDServiceClientConformsTo(keyboard, page, usage) != 0
             }
             func property(_ keyboard: Keyboard, _ key: CFString) -> Any? {
-                IOHIDServiceClientCopyProperty(keyboard, key)
+                owner.IOHIDServiceClientCopyProperty(keyboard, key)
             }
             func setProperty(_ keyboard: Keyboard, _ key: CFString, _ value: CFBoolean) -> Bool? {
-                IOHIDServiceClientSetProperty(keyboard, key, value)
+                owner.IOHIDServiceClientSetProperty(keyboard, key, value)
             }
         }
+        lazy var hid = HIDEventSystemShim(owner: self)
         func capsLockIsOn() -> Bool? { lockReadable ? keyboards.contains { $0.lockOn } : nil }
         @discardableResult func setCapsLock(_ on: Bool) -> Bool {
             guard lockWritable else { return false }
