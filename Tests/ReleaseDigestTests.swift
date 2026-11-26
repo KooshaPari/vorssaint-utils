@@ -56,10 +56,21 @@ enum ReleaseDigestTests {
             ("Fixed", .fixed), ("Hotfix", .fixed), ("Safety and reliability", .fixed),
             ("Summary", nil), ("What's KNU", nil), ("Contributors", nil), ("Docs", nil), ("Details", nil),
             ("Everything from 3.3.3", nil), ("Website", nil),
+            // The same heading as an editor that substitutes a typographic
+            // apostrophe writes it. Latent until it happens: the whole KNU list
+            // would otherwise read as ordinary `.changed` entries.
+            ("What\u{2019}s KNU", nil), ("What\u{2018}s KNU", nil),
+            ("what\u{2019}s knu", nil),
         ]
         for (title, kind) in expected {
             suite.expect(ReleaseChangeKind(section: title) == kind, "section \(title) reads as \(String(describing: kind))")
         }
+        // The folding has to leave every other kind alone, or a typographic
+        // apostrophe elsewhere would start deciding a section's kind.
+        suite.expect(ReleaseChangeKind(section: "Fixed \u{2019} now") == .changed,
+                     "a heading that is not one of the known names still reads as changed")
+        suite.expect(ReleaseChangeKind(section: "What's new") == .changed,
+                     "folding the apostrophe does not widen the excluded names")
     }
 
     private static func checkSettingsPaths(_ suite: TestSuite) {

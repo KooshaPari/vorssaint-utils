@@ -16,7 +16,10 @@ struct WhatsNewRow: Identifiable, Equatable {
     }
 
     let id: ID
-    let title: String
+    /// The row's name in the language it was built in. A row nested under the
+    /// Settings row that names it takes that row's title, so one surface is not
+    /// printed under two names in one window.
+    var title: String
     let icon: String
     /// The feature the row stands for, when it stands for a single one. The
     /// Dynamic Island row stands for the island, not for its extensions.
@@ -121,7 +124,16 @@ enum WhatsNewSupport {
             }
         }
         for item in sidebarItems {
-            let children = nested[.settings(item.id)] ?? []
+            let children = (nested[.settings(item.id)] ?? []).map { row -> WhatsNewRow in
+                // A new feature filed under the Settings row that stands for it
+                // is that same surface, so it reads the row's name ("Clipboard
+                // history") rather than the catalogue's ("Clipboard"). Derived
+                // from the row it is filed under, not from a second special case.
+                guard row.feature == representedFeature(of: item.id) else { return row }
+                var row = row
+                row.title = item.title
+                return row
+            }
             let changes = ownChanges(installedChanges[.settings(item.id)] ?? [], children: children)
             guard !changes.isEmpty || !children.isEmpty else { continue }
             let feature = representedFeature(of: item.id)
@@ -194,7 +206,7 @@ enum WhatsNewSupport {
     /// rows were built with, so a language change mid-window relabels them.
     static func titles(of rows: [WhatsNewRow], sidebarItems: [SettingsSidebarItem],
                        title: (AppFeature) -> String, generalTitle: String) -> [WhatsNewRow.ID: String] {
-        Dictionary((rows + rows.flatMap(\.children)).map { row -> (WhatsNewRow.ID, String) in
+        var resolved = Dictionary((rows + rows.flatMap(\.children)).map { row -> (WhatsNewRow.ID, String) in
             switch row.id {
             case .settings(let item):
                 return (row.id, sidebarItems.first { $0.id == item }?.title ?? row.title)
@@ -204,6 +216,14 @@ enum WhatsNewSupport {
                 return (row.id, title(feature))
             }
         }, uniquingKeysWith: { first, _ in first })
+        // A child named after the Settings row it is filed under keeps that name
+        // here too, so a language change cannot rename the pair apart.
+        for row in rows {
+            guard case .settings(let item) = row.id, let parentTitle = resolved[row.id] else { continue }
+            let owner = representedFeature(of: item)
+            for child in row.children where child.feature == owner { resolved[child.id] = parentTitle }
+        }
+        return resolved
     }
 
     /// The one feature a Settings row stands for, if any: a tool row, or a

@@ -175,6 +175,35 @@ enum NewFeatureBadgesTests {
                          "\(feature.rawValue) is not repeated as a row of its own above its parent")
         }
 
+        // A nested row is the same surface as the Settings row it is filed
+        // under, so it reads that row's name. One window must not print one
+        // surface under two names. SettingsSidebarSupport puts a tool row under
+        // its page row and titles it for the surface ("Clipboard history") while
+        // the catalog calls the feature "Clipboard", so the sidebar here is the
+        // one Settings builds: a page row plus a row per tool.
+        let titled = items + [SettingsSidebarItem(
+            id: .feature(.clipboardHistory),
+            destination: AppFeature.clipboardHistory.settingsDestination,
+            title: "Clipboard history", icon: "doc.on.clipboard")]
+        let titledSections = WhatsNewSupport.sections(
+            digest: ReleaseDigest(previousVersion: "3.4.4", version: "3.4.5", versions: ["3.4.5"],
+                                  summary: nil, changes: []),
+            newFeatures: tagged, sidebarItems: titled, isAvailable: { _ in true },
+            title: { $0.rawValue }, generalTitle: "General")
+        let pairs = titledSections.yourFeatures.flatMap { parent in parent.children.map { (parent, $0) } }
+            .filter { $0.0.feature == $0.1.feature }
+        suite.expect(!pairs.isEmpty, "at least one new feature is filed under the row it belongs to")
+        for (parent, child) in pairs {
+            suite.expect(child.title == parent.title,
+                         "the nested row reads its Settings row's title (\(child.title) vs \(parent.title))")
+        }
+        let resolved = WhatsNewSupport.titles(of: titledSections.yourFeatures, sidebarItems: titled,
+                                             title: { $0.rawValue }, generalTitle: "General")
+        for (parent, child) in pairs {
+            suite.expect(resolved[child.id] == resolved[parent.id],
+                         "a language change keeps the pair named one way")
+        }
+
         // A feature that is both new and changed keeps one row, and a line it
         // shares with a feature already on that page reads once, on the nested
         // row, rather than under both.

@@ -15,7 +15,7 @@ enum ReleaseChangeKind: Int, CaseIterable, Comparable {
     /// and the "What's KNU" review list, whose entries the window gets from
     /// `NewFeatureBadges` instead.
     init?(section title: String) {
-        let name = title.trimmingCharacters(in: .whitespaces).lowercased()
+        let name = Self.folded(title)
         if ["summary", "contributors", "docs", "details", "website", "links", "what's knu"].contains(name)
             || name.hasPrefix("everything from") {
             return nil
@@ -27,6 +27,17 @@ enum ReleaseChangeKind: Int, CaseIterable, Comparable {
         } else {
             self = .changed
         }
+    }
+
+    /// A heading is the same heading whatever apostrophe the author's keyboard
+    /// produced. macOS substitutes U+2019 as you type, so `### What’s KNU` is
+    /// what this section will eventually be written as; without folding it here
+    /// that heading would fall through to `.changed` and its entries would print
+    /// in the window as ordinary changes instead of staying out of the digest.
+    private static func folded(_ title: String) -> String {
+        title.trimmingCharacters(in: .whitespaces).lowercased()
+            .replacingOccurrences(of: "\u{2019}", with: "'")
+            .replacingOccurrences(of: "\u{2018}", with: "'")
     }
 }
 
