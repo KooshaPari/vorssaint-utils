@@ -429,3 +429,18 @@ authenticated. It is loopback-bound and `Ocgo.env` configures no client key, so
 this is not reachable off-host; requiring a bearer on the admin surface is a
 separate change that must also teach whatever calls it, and that caller list is
 currently empty.
+
+## Owed item closed: ocgo's logs carry no key material
+
+Verified rather than assumed. `~/.local/state/ocgo-serve.log` is 1.5 MB and contains
+zero matches for `sk-[A-Za-z0-9_-]{10,}` or `Bearer <token>`; what it logs is counts
+("ocgo 6 key(s)", "minimax 1 key(s)") and never a value. The live process tree is one
+server - pid `928846`, the only listener on `127.0.0.1:8791` - so the two
+`bind: address already in use` lines in that log are historical double-start attempts,
+not a stray second pool.
+
+Live key set for the rotation still owed by the operator: five `OC_*_API_KEY` entries
+in `Ocgo.env` plus `MINIMAX_API_KEY`. The pool reports six ocgo keys against five
+`OC_*` names, so one entry is being counted from somewhere other than that file; it
+does not change the redaction finding, and it is the kind of count to reconcile before
+rotating rather than after.
