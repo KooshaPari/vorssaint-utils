@@ -980,3 +980,47 @@ existed before the test that asserts it, and saying otherwise would be invention
 commit minutes later it took 54.94 s and passed. A wall-clock deadline on a shared laptop is a load
 detector, not a correctness test, and the number to watch is the suite duration in the log, which is
 printed either way.
+
+## P86-2 closed: six private symbols now resolve or withdraw
+
+**`2560553e`, gate `TESTS OK (124511 checks)`, 0 failure markers, all three shell suites OK.**
+Design record stays at `docs/P86-2-4-SPI-AND-PRIVILEGE.md`; the delivery record is
+`docs/P86-2-HID-SPI-SHIM.md`.
+
+The app no longer links `IOHIDEventSystemClientCreateSimpleClient`,
+`IOHIDEventSystemClientCopyServices`, `IOHIDServiceClientGetRegistryID`,
+`IOHIDServiceClientConformsTo`, `IOHIDServiceClientCopyProperty` or
+`IOHIDServiceClientSetProperty` from five place sites. They sit in one table
+(`Services/HID/HIDEventSystemSymbols.swift`), `HIDEventSystemShim` resolves all six with `dlsym` at
+first use, and every call site goes through the shim. A macOS that drops a symbol now costs the
+accelerate-scrolling and Caps Lock-unmapped features instead of costing the process at dyld bind
+time.
+
+**The delta is exactly attributable.** Baseline 124491 → 124511 is +20: the 19 new checks plus the
+preference-namespace guard's per-file read of the two new sources. No existing suite moved; the
+now-playing groups still report 17/9/9 and roll up to 35.
+
+**The new baseline is 124511, and the Linux subset is 142 checks** (was 123).
+
+**RED is partial and named.** Reverting the three call-site files to `HEAD` fails 6 of 19: the three
+per-file "reaches the interface through the shim", the tree scan that lists all three files by name,
+and the two mode-availability checks. The other thirteen test files this commit created, so they
+cannot be RED.
+
+**Two gate runs died at compile before the third passed, and that is not a flake to be re-read.**
+`generate_sources.py` copies `clearUnmappedCapsLock` verbatim into a test double, so the double has
+to satisfy everything the body touches. Attempt 1: the shim did not exist in the double. Attempt 2:
+the double nested the shim with a `shared` singleton, and Swift refused the recording fakes as
+instance members of the enclosing state. Attempt 3 holds the shim as a stored dependency on both
+sides and is green. Each failed attempt died in about twenty seconds, before a single test ran, which
+is why this feature consumed three runs against a budget of two: there was no test result to re-read.
+
+**Measured, not assumed.** The six symbols resolve on this Mac today (a `ctypes` `dlsym` probe of
+IOKit), so `isAvailable == true` here and the user-visible behaviour is unchanged. The imported
+signatures were taken from `swiftc -typecheck` against the real headers rather than guessed:
+`ConformsTo` is `Int32`, `CopyProperty` is `CFTypeRef?`.
+
+**Unproven:** the withdrawal path itself. `isAvailable == false` needs a Mac genuinely missing a
+symbol, and there is none; what is proven is that the interfaces resolve, that no call site bypasses
+the shim, and that the acceleration mode consults the shim's own answer before offering itself.
+

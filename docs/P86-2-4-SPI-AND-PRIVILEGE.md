@@ -75,6 +75,10 @@ ways a macOS update can break the app. **B is a product question**, not a defect
 per-device behaviour for public API, and only the operator can decide whether that trade is worth it.
 C only if B is refused and the maintenance burden is judged not worth carrying.
 
+**Resolved 2026-11-26:** option A shipped as `2560553e`. What landed, what the gate said and what is
+still unproven are in `docs/P86-2-HID-SPI-SHIM.md`. This note stays as the design record; the two
+disagree nowhere and the implementation note supersedes nothing here.
+
 ### Not established
 
 Whether the private symbols still exist and behave identically on the OS versions this app targets
