@@ -80,4 +80,9 @@ final class NowPlayingBridgeFailureReporter {
         defer { lock.unlock() }
         return lastReported
     }
+
+    /// What the views ask: is the channel broken right now? Reading the log is
+    /// not something a user does, so an empty card checks this instead and says
+    /// so. A readable reply clears it through `recordSuccess()`.
+    var showsUnavailable: Bool { lastReportedFailure != nil }
 }

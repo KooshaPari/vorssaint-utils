@@ -473,6 +473,7 @@ extension RadialMenuItem {
                 switch nowPlayingState {
                 case let .some(.playing(snapshot)): return snapshot.radialLabel ?? text.mediaNowPlaying
                 case .some(.nothingPlaying): return text.mediaNothingPlaying
+                case .some(.unavailable): return text.mediaPlaybackUnavailable
                 case .some(.loading), .none: return text.mediaNowPlaying
                 }
             case nil: return text.kindMedia

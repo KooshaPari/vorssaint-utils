@@ -53,6 +53,19 @@ enum NowPlayingBridgeTests {
             let names = NowPlayingBridgeFailure.allCases.map(\.rawValue)
             suite.expect(!names.contains("noSession"),
                          "the normal no-playback state is not a reportable failure")
+
+            // The views ask this instead of reading the log. It has to follow
+            // the reporter exactly, or a recovered channel keeps saying it is
+            // broken.
+            let viewReporter = NowPlayingBridgeFailureReporter()
+            suite.expect(!viewReporter.showsUnavailable,
+                         "a reporter that has written nothing does not claim the channel is broken")
+            viewReporter.report(.processFailed) { _ in }
+            suite.expect(viewReporter.showsUnavailable,
+                         "a reported failure makes the channel read as unavailable")
+            viewReporter.recordSuccess()
+            suite.expect(!viewReporter.showsUnavailable,
+                         "a readable reply stops the views saying unavailable")
         }
 
         // Both bridges used to collapse every outcome into `nil`/`connectionEnded`,
@@ -80,6 +93,51 @@ enum NowPlayingBridgeTests {
                 suite.expect(source.contains("privacy: .public"),
                              "\(label): the line is readable in Console.app without a debugger")
             }
+        }
+
+        // The failure used to be log-only: a user who was not watching Console
+        // saw an empty card and no reason. These read the three surfaces that
+        // draw it, because each lives in a file that imports AppKit or
+        // SwiftUI and cannot be compiled on this node.
+        suite.run("now-playing-unavailable-surfaces") {
+            for (label, relative, expected) in [
+                ("wheel state",
+                 "Sources/Vorssaint/Services/RadialMenu/RadialMenuSupport.swift",
+                 ["case unavailable"]),
+                ("wheel read",
+                 "Sources/Vorssaint/Services/RadialMenu/RadialNowPlayingService.swift",
+                 ["showsUnavailable", ".unavailable"]),
+                ("wheel label",
+                 "Sources/Vorssaint/UI/RadialMenu/RadialMenuView.swift",
+                 ["case .some(.unavailable)", "text.mediaPlaybackUnavailable"]),
+                ("notch card",
+                 "Sources/Vorssaint/UI/Notch/NotchMusicView.swift",
+                 ["NowPlayingBridgeFailureReporter.shared.showsUnavailable",
+                  "text.mediaPlaybackUnavailable"]),
+            ] {
+                guard let source = sourceText(relative) else {
+                    suite.expect(false, "\(label): source not found at \(relative)")
+                    continue
+                }
+                for fragment in expected {
+                    suite.expect(source.contains(fragment),
+                                 "\(label): says why the card is empty (\(fragment))")
+                }
+            }
+            // A new label is only worth anything in every language: a table
+            // left out falls back to nothing at all. Counting the two keys
+            // against each other is stronger than checking the one file that
+            // happens to be English.
+            guard let strings = sourceText("Sources/Vorssaint/Core/RadialMenuStrings.swift") else {
+                suite.expect(false, "the language tables are not readable")
+                return
+            }
+            let unavailable = strings.components(separatedBy: "mediaPlaybackUnavailable:").count - 1
+            let nothingPlaying = strings.components(separatedBy: "mediaNothingPlaying:").count - 1
+            suite.expect(nothingPlaying > 0,
+                         "the existing empty-state label is found (\(nothingPlaying))")
+            suite.expect(unavailable == nothingPlaying,
+                         "every language that has an empty state also has an unavailable label (\(unavailable) of \(nothingPlaying))")
         }
     }
 

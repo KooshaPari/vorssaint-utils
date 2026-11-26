@@ -157,6 +157,10 @@ struct NotchMusicView: View {
     private var idle: some View {
         let player = preview ? nil : NotchPreferredPlayer.current()
         let opens = player != nil
+        // A bridge that failed and an idle player draw the same card, so when
+        // the channel is broken the card says so. Preview stays honest: it is a
+        // settings thumbnail, not a live read.
+        let unavailable = !preview && NowPlayingBridgeFailureReporter.shared.showsUnavailable
         let openTitle = player.map { NotchPreferredPlayer.openTitle(for: $0) } ?? ""
         return VStack(spacing: 0) {
             head(corner: !band.besideCamera && band.pageSectionsButton) {
@@ -167,13 +171,14 @@ struct NotchMusicView: View {
                 .buttonStyle(NotchButtonStyle(cornerRadius: NotchLayout.musicArtworkSize * 0.19))
                 .disabled(!opens)
                 .help(openTitle)
-                .accessibilityLabel(opens ? openTitle : text.mediaNothingPlaying)
+                .accessibilityLabel(opens ? openTitle : (unavailable ? text.mediaPlaybackUnavailable : text.mediaNothingPlaying))
             } titles: {
                 VStack(alignment: .leading, spacing: 2) {
                     if !service.sources.isEmpty || !service.sourceIsAutomatic {
                         sourcePicker(nil)
                     } else {
-                        Text(text.mediaNothingPlaying).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                        Text(unavailable ? text.mediaPlaybackUnavailable : text.mediaNothingPlaying)
+                            .font(.system(size: 14, weight: .semibold)).lineLimit(1)
                     }
                     // Where the song's artist goes: which app the buttons open.
                     if opens {
@@ -786,9 +791,12 @@ struct NotchMusicControlsView: View {
     }
 
     private func titles(artist: Bool) -> some View {
-        Button { notch.select(.music) } label: {
+        let unavailable = !preview && NowPlayingBridgeFailureReporter.shared.showsUnavailable
+        return Button { notch.select(.music) } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(music.playback?.track.title ?? (music.awaitingPlayback ? text.mediaNowPlaying : text.mediaNothingPlaying))
+                Text(music.playback?.track.title
+                     ?? (music.awaitingPlayback ? text.mediaNowPlaying
+                         : (unavailable ? text.mediaPlaybackUnavailable : text.mediaNothingPlaying)))
                     .font(.system(size: 13, weight: .semibold)).lineLimit(1)
                 if artist {
                     Text(music.commandFailed ? FeatureStrings.notchMusicExtras(l10n.language).playbackFailed

@@ -31,7 +31,8 @@ final class RadialNowPlayingService {
         bridge.fetch { [weak self] snapshot in
             DispatchQueue.main.async {
                 guard let self, self.generation == requestedGeneration else { return }
-                let nextState = snapshot.map(RadialNowPlayingState.playing) ?? .nothingPlaying
+                let nextState = snapshot.map(RadialNowPlayingState.playing)
+                    ?? (NowPlayingBridgeFailureReporter.shared.showsUnavailable ? .unavailable : .nothingPlaying)
                 self.state = nextState
                 update(nextState)
                 guard let anchor = self.pendingPresentationAnchor else { return }
@@ -49,7 +50,7 @@ final class RadialNowPlayingService {
             showCard(snapshot: snapshot, at: anchor)
         case .loading:
             pendingPresentationAnchor = anchor
-        case .nothingPlaying:
+        case .nothingPlaying, .unavailable:
             break
         }
     }

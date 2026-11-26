@@ -520,6 +520,9 @@ enum RadialNowPlayingState: Equatable {
     case loading
     case nothingPlaying
     case playing(RadialNowPlayingSnapshot)
+    /// The bridge that reads Now Playing failed, so the wheel knows the card is
+    /// empty for a reason rather than because the player is idle.
+    case unavailable
 }
 
 enum RadialNowPlayingSupport {
