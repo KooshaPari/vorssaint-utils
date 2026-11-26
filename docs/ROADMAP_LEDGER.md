@@ -538,3 +538,22 @@ conclude the suite lost 150 checks, and would be wrong.
 A harness change is in flight to indent nested group lines so the log stops looking
 summable. Until it is gated, the rule is: cite the total, and treat a group line as a
 delta that may overlap its parent.
+
+## A third correction: the pool admin surface was never unauthenticated
+
+I had been carrying "`/pool` is redacted but unauthenticated" as an owed half. Reading
+the pool's own code instead of my note: `adminAllowed` in
+`internal/adapters/proxy/server.go` decides entitlement for `/pool`, `/pools`,
+`/pool/status` and `/reload` **before** any entry sync runs, and the rule is that
+loopback *is* the owner's own-machine entitlement while a non-loopback caller must
+present the configured client key as `Authorization: Bearer` or `x-ocgo-pool-key`,
+compared in constant time. `TestAdminRoutesGuard` is an 18-case matrix over
+caller x entitlement x verb, and on this host at `6b8bd81` it passes 18/18
+(`go test ./internal/adapters/proxy/ -run TestAdminRoutesGuard`, `EXIT=0`). The live
+pool is `--addr 127.0.0.1:8791` with no client key, so a remote caller cannot even
+reach the socket and the loopback path is the intended one.
+
+So my unauthenticated 200 from `GET /pool` was the design working, not a gap. The
+README documents both the loopback-only bind and the bearer defence. Nothing is owed
+here; what remains owed on the key front is the operator's rotation, which is a
+different item and still genuinely outstanding.
