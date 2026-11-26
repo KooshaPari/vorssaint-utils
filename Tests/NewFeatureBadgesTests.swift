@@ -182,7 +182,10 @@ enum NewFeatureBadgesTests {
                                     version: "3.4.5", features: [.clipboardHistory])
         let shared = ReleaseChange(text: "Pastes without formatting.", kind: .changed,
                                    version: "3.4.5", features: [.clipboardHistory, .pastePlain])
-        func sections(for newFeatures: [AppFeature]) -> WhatsNewSections {
+        // Named apart from the `sections` value above: an inner `func sections`
+        // loses the name to the enclosing `let`, and every call then reads as
+        // "cannot call value of non-function type 'WhatsNewSections'".
+        func built(for newFeatures: [AppFeature]) -> WhatsNewSections {
             WhatsNewSupport.sections(
                 digest: ReleaseDigest(previousVersion: "3.4.4", version: "3.4.5", versions: ["3.4.5"],
                                       summary: nil, changes: [changed, shared]),
@@ -193,9 +196,9 @@ enum NewFeatureBadgesTests {
             sections.yourFeatures.first { $0.id == .settings(.page(.clipboard)) }
         }
         // Without the feature being new, both lines land on the Clipboard row.
-        suite.expect(clipboardPage(of: sections(for: []))?.changes == [changed, shared],
+        suite.expect(clipboardPage(of: built(for: []))?.changes == [changed, shared],
                      "the Clipboard page reads both lines when nothing is new")
-        let both = sections(for: [.clipboardHistory])
+        let both = built(for: [.clipboardHistory])
         suite.expect(clipboardPage(of: both)?.children.first?.changes == [changed, shared],
                      "the nested row reads the lines that name the new feature")
         suite.expect(clipboardPage(of: both)?.changes.isEmpty == true,
