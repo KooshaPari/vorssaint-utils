@@ -517,3 +517,24 @@ repo, from `git log --all`, from the Mac checkout and from GitHub code search, s
 the row was pointing at a document that has never existed on either host. F3 now
 names the replacement: findings derived from the source in front of us, numbered
 `P86-n` to continue the series rather than pretending the P85 set was ever read.
+
+## The macOS total is authoritative; the per-group lines are not summable
+
+Reading the gate log at `03906740` line by line produced a discrepancy worth writing
+down. `Tests/TestSuite.swift` prints one line per group whose `N` is the delta of one
+shared counter, and the harness's own summary is `TESTS OK (124,440 checks)`. The 70
+group lines in that run sum to **124,590** - 150 more than the total.
+
+The cause is not a lost run and not a duplicate group: it is nesting. A group body
+may call `suite.run` again, and `ComputeMeshTests` and `FluxScheduleTests` both do.
+`mesh` prints 79 checks while its three sub-groups (`mesh-sources` 12, `mesh-ssh` 7,
+`mesh-merge` 11) print their own lines; `flux` prints 71 while its five sub-groups
+print 23, 9, 9, 19 and 11. Those nested checks are inside the parent's delta *and* on
+their own line. So the **total is the truthful figure** and a sum over the printed
+lines over-reports. Every count cited in this ledger is the total, which is why the
+existing rows are still correct - but a future reader adding up group lines would
+conclude the suite lost 150 checks, and would be wrong.
+
+A harness change is in flight to indent nested group lines so the log stops looking
+summable. Until it is gated, the rule is: cite the total, and treat a group line as a
+delta that may overlap its parent.
