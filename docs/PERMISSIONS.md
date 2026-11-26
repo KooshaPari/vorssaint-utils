@@ -20,6 +20,12 @@ You can review or change every grant in System Settings, under Privacy and Secur
 | Automation | Yes | Finder actions and supported music playback controls |
 | App Management | Yes | App installs, updates and removal |
 
+## One feature asks for nothing, and here is why
+
+**Per device mouse acceleration.** Setting one mouse to linear movement needs no permission and shows no prompt, because it reads and sets a property on the connected input device rather than capturing input. No keystrokes, clicks or cursor positions are recorded for this.
+
+It does depend on an Apple input interface that is not publicly documented, which is why this paragraph exists. A future macOS release could change it, and the honest statement of today's behaviour is that per device linear mode would stop working. Treat this feature as the one place where an OS update can break the app in a way we cannot repair from our side.
+
 ## Accessibility
 
 **Why it comes up.** macOS keeps control of keyboard and pointer input, along with the ability to read other apps' windows, behind the Accessibility permission.
@@ -142,7 +148,17 @@ Download monitoring watches only the folder you choose in the system picker. Fol
 
 **If you say no.** Closed lid mode still works. macOS just asks for your administrator password each time you turn it on or off.
 
-**Optional.** Yes, and it is a one time choice. The rule is limited to `pmset disablesleep` and nothing else, and it goes away on its own when you uninstall Vorssaint or reset things from Settings under Advanced.
+**Optional.** Yes, and it is a one time choice. The rule is limited to `pmset disablesleep` and nothing else, and it goes away when you uninstall Vorssaint or reset things from Settings under Advanced.
+
+**What the rule actually says.** It is written to `/etc/sudoers.d/vorssaint-clamshell` and contains exactly two authorized commands for your numeric user id:
+
+```
+#<your uid> ALL=(root) NOPASSWD: /usr/bin/pmset disablesleep 1, /usr/bin/pmset disablesleep 0
+```
+
+It does not ask for a password, and that applies to **any program running as your user**, not only to Vorssaint. Nothing else is authorized: no other `pmset` arguments, no shell, no editor. If you want it gone, delete that file as an administrator or use the remove option in Settings.
+
+One honest limit: the rule is removed by Vorssaint's own uninstaller. If you delete the app by dragging it to the Trash, no code runs, so the file stays until you remove it yourself.
 
 ## Automation
 

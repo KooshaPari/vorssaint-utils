@@ -51,11 +51,16 @@ linear while a trackpad is not.
 
 ### Options
 
-**A. Keep it, and make the failure non-fatal.** Load the constructor via `dlopen`/`dlsym` on the
-private framework path, as `NowPlayingSelection.swift:30` already does for MediaRemote, and treat a
-missing symbol as "linear mouse mode unavailable" instead of a launch crash. Cost: small, and it
-turns the worst failure mode into a benign one. This does not make the API public; it makes the app
-survive its removal.
+**A. Keep it, and make the failure non-fatal.** Load the private symbols via `dlopen`/`dlsym` on
+`/System/Library/Frameworks/IOKit.framework`, as `NowPlayingSelection.swift:30` already does for
+MediaRemote, and treat a missing symbol as "linear mouse mode unavailable" instead of a launch crash.
+The surface is bounded: six functions and two opaque types are actually used —
+`IOHIDEventSystemClientCreateSimpleClient`, `IOHIDEventSystemClientCopyServices`,
+`IOHIDServiceClientCopyProperty`, `IOHIDServiceClientSetProperty`, `IOHIDServiceClientConformsTo`,
+`IOHIDServiceClientGetRegistryID`, plus `IOHIDEventSystemClient` and `IOHIDServiceClient`. Everything
+else in those two files is public `IOHIDManager`/`IODKit` API. So this is a shim plus a call-site
+rewrite, not a redesign — but it is not a one-liner either, and it cannot be behaviourally verified
+without a Mac. This does not make the API public; it makes the app survive its removal.
 
 **B. Replace with the system-wide preference.** `defaults write -g com.apple.mouse.scaling` plus a
 `killall`/re-login is public and stable, at the cost of the per-device distinction that is the

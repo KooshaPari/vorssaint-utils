@@ -918,3 +918,16 @@ ready while the real call still prompted (`ShellSupport.swift:146-153`), and bot
 No code changed in either note, so nothing to gate. Both P86-2 and P86-4 stay open at the design
 step: P86-2's `dlopen` conversion and P86-4's three-sentence correction are each small enough to be
 the next leaves.
+
+**P86-4 disclosure corrected in `docs/PERMISSIONS.md`.** The "goes away on its own" claim was false
+for a Trash deletion, so it now says the uninstaller removes it and a Trash deletion leaves the file.
+Added the exact rule text and its path so a user can verify it, and said plainly that the passwordless
+part applies to any program running as that user. Also added a short "one feature asks for nothing"
+section: per-device mouse acceleration needs no permission and no prompt, and — stated as today's
+truth, not an aspiration — it is the one place where a macOS update can break the app from our side
+because the interface is undocumented. That sentence becomes "the mode becomes unavailable and
+everything else keeps working" only after P86-2's `dlopen` shim lands.
+
+P86-2's shim was scoped rather than smuggled in: six functions and two opaque types are actually
+used, everything else is public IOKit, so it is a shim plus a call-site rewrite with no Mac-free
+behavioural verification available. Next leaf.
