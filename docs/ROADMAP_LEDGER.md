@@ -612,3 +612,32 @@ One further stale item: the topology note says NixOS SSH key auth is refused, so
 offloading is blocked. This lane is executing on NixOS directly and has been for its
 whole life, so that line is true only of the SSH path from another host, not of NixOS
 availability.
+
+## Open: the harness change is merged but not yet gated on macOS
+
+`89cca321` merges `feat/harness-nested-indent` (`0fc005b2`) into
+`dev/maccy-clipboard-parity` and is pushed. What it does: `Tests/TestSuite.swift` tracks
+how many `run` bodies are on the stack and indents a nested group's line by two spaces
+per level, so the log stops looking like a flat list of siblings; plus
+`TestHarnessTests.nestingContract`, which pins that a nested line is indented, that the
+counter increments once per assertion across nesting, and that the printed deltas sum to
+more than the total - the over-report is now a test rather than a paragraph.
+
+Evidence so far is Linux-side only: `Tests/LinuxSubsetCheck.sh` reports
+`SUBSET OK (79 checks)` rc 0, and the worker's red evidence is real - on the base class
+the nesting assertion fails (`FAIL: nested 'inner' line is NOT indented`, rc 1) while the
+overlap fact already held (`1 + 2 = 3 > 2`), and the committed test does not even compile
+against the base class (`no member 'lineSink'`, which is the seam added to observe a
+printed line).
+
+**The macOS gate is not met.** `kooshas-laptop` went offline while this was landing:
+Tailscale reports `offline, last seen 1m ago`, ICMP to `100.112.14.98` is 100% loss, and
+port 22 does not answer. The gate is `./build.sh --test` on that host - `--test`, not
+`test`, because the bare word is an accepted argument of a different branch - and it
+needs a long or absent client timeout, since a 276 s run has already been killed by a
+60 s client-side bound and read as a lane failure.
+
+Until it runs, the honest status of this row is `change_made`, not `workflow_validated`.
+A 6-check harness test and a print-format change do not plausibly break 124,440 existing
+checks, but "does not plausibly" is not evidence, and this lane has already been wrong
+once about a number derived from a log it had not re-read.
