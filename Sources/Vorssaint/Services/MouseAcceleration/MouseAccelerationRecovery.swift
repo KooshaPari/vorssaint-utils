@@ -11,7 +11,7 @@ enum MouseAccelerationRecovery {
     static func restorePending() -> Bool {
         guard let journal = loadJournal() else { return false }
         guard !journal.entries.isEmpty else { return true }
-        let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
+        guard let client = HIDEventSystemShim.shared.makeClient() else { return false }
         return restorePending(using: client)
     }
 
@@ -70,11 +70,11 @@ enum MouseAccelerationRecovery {
     }
 
     static func services(using client: IOHIDEventSystemClient) -> [IOHIDServiceClient]? {
-        IOHIDEventSystemClientCopyServices(client) as? [IOHIDServiceClient]
+        HIDEventSystemShim.shared.services(of: client)
     }
 
     static func registryID(of service: IOHIDServiceClient) -> UInt64? {
-        let value = (IOHIDServiceClientGetRegistryID(service) as? NSNumber)?.uint64Value
+        let value = (HIDEventSystemShim.shared.registryID(of: service) as? NSNumber)?.uint64Value
         return MouseAccelerationSupport.validatedRegistryID(value)
     }
 
@@ -91,9 +91,9 @@ enum MouseAccelerationRecovery {
     }
 
     static func isMouse(_ service: IOHIDServiceClient) -> Bool {
-        guard IOHIDServiceClientConformsTo(service,
-                                           UInt32(kHIDPage_GenericDesktop),
-                                           UInt32(kHIDUsage_GD_Mouse)) != 0 else {
+        guard HIDEventSystemShim.shared.conformsTo(service,
+                                                  page: UInt32(kHIDPage_GenericDesktop),
+                                                  usage: UInt32(kHIDUsage_GD_Mouse)) == true else {
             return false
         }
         let accelerationType = stringProperty(MouseAccelerationSupport.pointerAccelerationTypeKey,
@@ -220,7 +220,7 @@ enum MouseAccelerationRecovery {
 
     private static func storedValue(for key: String,
                                     on service: IOHIDServiceClient) -> MouseAccelerationStoredValue? {
-        guard let value = IOHIDServiceClientCopyProperty(service, key as CFString),
+        guard let value = HIDEventSystemShim.shared.property(service, key as CFString),
               let number = value as? NSNumber else { return nil }
         return MouseAccelerationStoredValue(
             rawValue: number.int64Value,
@@ -232,7 +232,9 @@ enum MouseAccelerationRecovery {
                                      key: String,
                                      on service: IOHIDServiceClient) -> Bool {
         if storedValue(for: key, on: service) == value { return true }
-        guard IOHIDServiceClientSetProperty(service, key as CFString, cfValue(value)) == true else {
+        guard HIDEventSystemShim.shared.setProperty(service,
+                                                   key as CFString,
+                                                   cfValue(value)) == true else {
             return false
         }
         return storedValue(for: key, on: service) == value
@@ -247,12 +249,12 @@ enum MouseAccelerationRecovery {
 
     private static func numberProperty(_ key: String,
                                        of service: IOHIDServiceClient) -> Int64? {
-        (IOHIDServiceClientCopyProperty(service, key as CFString) as? NSNumber)?.int64Value
+        (HIDEventSystemShim.shared.property(service, key as CFString) as? NSNumber)?.int64Value
     }
 
     private static func stringProperty(_ key: String,
                                        of service: IOHIDServiceClient) -> String? {
-        guard let value = IOHIDServiceClientCopyProperty(service, key as CFString) else {
+        guard let value = HIDEventSystemShim.shared.property(service, key as CFString) else {
             return nil
         }
         if let string = value as? String, !string.isEmpty { return string }

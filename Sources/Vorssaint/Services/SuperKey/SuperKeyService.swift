@@ -919,18 +919,20 @@ final class SuperKeyService: ObservableObject {
     /// Only a keyboard that still has a native Caps Lock needs a corrective
     /// write. A system-wide reset here would undo a solo tap on another device.
     private func clearUnmappedCapsLock(reportedOn: Bool) {
-        let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
+        let shim = HIDEventSystemShim.shared
+        guard let client = shim.makeClient() else { return }
         // The services read and write properties through their client's connection.
         defer { withExtendedLifetime(client) {} }
-        let services = IOHIDEventSystemClientCopyServices(client) as? [IOHIDServiceClient] ?? []
+        let services = shim.services(of: client) ?? []
         for keyboard in services {
-            guard IOHIDServiceClientConformsTo(keyboard, UInt32(kHIDPage_GenericDesktop),
-                                               UInt32(kHIDUsage_GD_Keyboard)) != 0 else { continue }
-            let mapping = IOHIDServiceClientCopyProperty(keyboard, SuperKeySupport.userMappingProperty as CFString)
+            guard shim.conformsTo(keyboard,
+                                  page: UInt32(kHIDPage_GenericDesktop),
+                                  usage: UInt32(kHIDUsage_GD_Keyboard)) == true else { continue }
+            let mapping = shim.property(keyboard, SuperKeySupport.userMappingProperty as CFString)
             guard SuperKeySupport.hasNativeCapsLock(in: mapping) else { continue }
             let lockKey = "HIDCapsLockState" as CFString
-            if reportedOn || IOHIDServiceClientCopyProperty(keyboard, lockKey) as? Bool != false {
-                _ = IOHIDServiceClientSetProperty(keyboard, lockKey, kCFBooleanFalse)
+            if reportedOn || shim.property(keyboard, lockKey) as? Bool != false {
+                _ = shim.setProperty(keyboard, lockKey, kCFBooleanFalse)
             }
         }
     }

@@ -139,6 +139,7 @@ struct MetricsTests {
             ("transient-paste", { TransientPasteTests.run(suite) }),
             ("notch-music", { NotchMusicExtrasTests.run(suite) }),
             ("now-playing", { NowPlayingBridgeTests.run(suite) }),
+            ("hid-event-system", { HIDEventSystemShimTests.run(suite) }),
             ("notch", {
                 NotchTests.run(suite)
                 NotchCompactTests.run(suite)

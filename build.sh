@@ -443,6 +443,7 @@ if (( TEST )); then
         Sources/Vorssaint/Services/Mesh/ComputeMeshSupport.swift
         Sources/Vorssaint/Services/Mesh/ComputeMeshService.swift
         Sources/Vorssaint/Services/Notch/NowPlayingBridgeFailure.swift
+        Sources/Vorssaint/Services/HID/HIDEventSystemSymbols.swift
         Sources/Vorssaint/Core/WhatsAppDownloadStrings.swift
         Sources/Vorssaint/Core/WhatsAppOrganizerStrings.swift
         Sources/Vorssaint/Core/ReleaseNotes.swift

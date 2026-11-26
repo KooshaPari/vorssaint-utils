@@ -45,7 +45,17 @@ final class MouseAccelerationService {
 
     private var featureWanted: Bool {
         AppFeature.mouseAcceleration.isAvailable
+            && Self.isRuntimeAvailable
             && defaults.bool(forKey: DefaultsKey.mouseAccelerationDisabled)
+    }
+
+    /// The mode exists only while this Mac still exposes the private HID
+    /// interface. Stated as a property of the service rather than of the
+    /// preference, because the preference can be on while the interface is
+    /// gone, and the answer has to come from the same shim the writes go
+    /// through.
+    static var isRuntimeAvailable: Bool {
+        HIDEventSystemShim.shared.isAvailable
     }
 
     private func startIfAllowed() {
@@ -61,7 +71,12 @@ final class MouseAccelerationService {
             applyLinearMode()
             return
         }
-        let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
+        guard let client = HIDEventSystemShim.shared.makeClient() else {
+            // The interface this feature needs is not on this Mac any more.
+            // Withdraw rather than half-apply a mode we could not restore.
+            self.client = nil
+            return
+        }
         _ = MouseAccelerationRecovery.restorePending(using: client)
         self.client = client
         startDeviceObservation()
@@ -167,7 +182,7 @@ final class MouseAccelerationService {
                   self.sessionIsActive, self.systemIsAwake else { return }
             // Physical-device callbacks can precede the event-system service, and
             // its initial settings can arrive later still. Read a fresh service list.
-            let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
+            guard let client = HIDEventSystemShim.shared.makeClient() else { return }
             self.client = client
             _ = MouseAccelerationRecovery.restorePending(using: client,
                                                           preservingConnectedEntries: true)

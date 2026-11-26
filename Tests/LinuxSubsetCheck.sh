@@ -22,13 +22,14 @@ REPO="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 OUT="${TMPDIR:-/tmp}/vorssaint-linux-subset"
 mkdir -p "$OUT"
 
-SUITES=(Tests/ComputeMeshTests.swift Tests/SMBSharesTests.swift Tests/NowPlayingBridgeTests.swift)
+SUITES=(Tests/ComputeMeshTests.swift Tests/SMBSharesTests.swift Tests/NowPlayingBridgeTests.swift Tests/HIDEventSystemShimTests.swift)
 SOURCES=(
     Sources/Vorssaint/Services/Mesh/ComputeMeshSupport.swift
     Sources/Vorssaint/Services/Mesh/ComputeMeshService.swift
     Sources/Vorssaint/Services/SMB/SMBShares.swift
     Sources/Vorssaint/Services/SMB/SMBSharesService.swift
     Sources/Vorssaint/Services/Notch/NowPlayingBridgeFailure.swift
+    Sources/Vorssaint/Services/HID/HIDEventSystemSymbols.swift
 )
 
 cd "$REPO" || exit 2
@@ -92,6 +93,7 @@ let suite = TestSuite()
 ComputeMeshTests.run(suite)
 SMBSharesTests.run(suite)
 NowPlayingBridgeTests.run(suite)
+HIDEventSystemShimTests.run(suite)
 suite.finish()
 SWIFT
 
