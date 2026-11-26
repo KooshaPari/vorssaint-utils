@@ -943,3 +943,23 @@ checks failing) and GREEN after (111 of 111), so the check is not vacuous.
 What this does **not** do: a user who is not reading Console.app still sees an empty card. The UI half
 (notch empty state + wheel card + a `docs/TROUBLESHOOTING.md` filter line) is the next leaf, and P86-1
 stays open until it lands.
+
+### P86-1 gate: `a19f522c` passes on the real host, 124479 checks
+
+`./build.sh --test` on `kooshas-laptop`, one run: **`TESTS OK (124479 checks)`**, zero lines matching
+`FAIL|not ok|error:|✗`, 76 suite-OK lines, and the three shell suites (preference cleanup, Uninstall
+spaces, Developer install isolation) each ended OK. Baseline was `124455` at `6bce2a44`, so the delta
+is **+24**, fully attributed: **+23** from the new `now-playing` group (14 reporter + 9 call sites) and
+**+1** from `PreferenceNamespaceTests`, which asserts one check per `Tests/*.swift` file and therefore
+grew when `NowPlayingBridgeTests.swift` was added.
+
+The first attempt at `c87a2213` failed to compile — `cannot find 'NowPlayingBridgeFailure' in scope`
+— because `build.sh` compiles an explicit Foundation-only support list into `metrics-tests` rather
+than the whole tree; `a19f522c` adds the file to that list. That is exactly the class of error the
+Linux subset cannot catch, because the subset keeps its own list.
+
+**Exit code was not captured** (the run was launched detached with `nohup … & disown`, so the shell
+reported on the process, not the gate). The log's terminal state is clean by every marker the script
+emits, but no `EXIT=0` was recorded, so this is `workflow_validated`, not `outcome_delivered`: nothing
+has yet been observed at runtime — no real media player, no real log stream, no reading of
+Console.app.
