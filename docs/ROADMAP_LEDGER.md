@@ -92,7 +92,7 @@ implementation, bundle it.
 | # | Item | Status |
 | --- | --- | --- |
 | E1 | Tailscale integration: bind agent and harness services to the tailnet, verify peer identity | queued |
-| E2 | Mullvad integration: per-provider egress policy through its SOCKS5 or CLI, refuse rather than fall back | queued |
+| E2 | Mullvad integration: per-provider egress policy through its SOCKS5 or CLI, refuse rather than fall back | shipped, and this row was stale: `cf5ee226` landed `EgressPolicy`, `ProviderEgress` and `MullvadProbe` (`Sources/Vorssaint/Services/NetworkEgress/`, 404 lines) with `Tests/MullvadEgressTests.swift` registered in the `mullvad-egress` group, `AgentPriceSource` as its caller. The macOS gate at `03906740` ran that group: `mullvad-egress: OK (84 checks, 0.01s)` inside the 124440-check run. The refusal shape is a policy property: an undeclared or malformed declaration refuses every lookup rather than sending the request directly, and the probe distinguishes a closed SOCKS port from a live listener whose relay is gone. Not verified: the live path, because no Mullvad instance runs on either host, so the 84 checks exercise the injected transport rather than a real handshake |
 
 ## F. Packaging and security
 
@@ -100,7 +100,7 @@ implementation, bundle it.
 | --- | --- | --- |
 | F1 | Signed, notarized `.app` and `.dmg`, stapled | blocked on notary credentials (`NOTARY_API_KEY_P8`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID`) or a run in the Mac's GUI session |
 | F2 | Homebrew cask in the tap | queued, follows F1 |
-| F3 | Apple findings P85-1..P85-5 from `pr-review-plan-20261120.md` | needs info: document not found on this host |
+| F3 | Apple-platform findings: App Review / notarization risk, platform correctness and privacy surface | replaced: the P85-1..P85-5 source (`pr-review-plan-20261120.md`) does not exist - absent from the repo, from `git log --all`, from the Mac checkout and from GitHub code search - so the reference is retired rather than deferred. A fresh read-only review derives the findings from source as `P86-n` with `file:line` citations and a stated consequence per item; signing and entitlement *state* stay unverifiable here because there is no `codesign` / notarization tooling on this host |
 
 ## Operator facts recorded
 
@@ -486,3 +486,34 @@ empty-state wrapping, the clear button's hit area, VoiceOver order, and truncati
 the longer German and French strings are source readings on this host, because there
 is no macOS here. The gate proves it compiles and the suites pass; only a human
 looking at the window proves it looks right.
+
+## Two corrections, both from reading the tree instead of trusting the rows
+
+**E2 was not queued. It shipped and this ledger said otherwise.** The row read
+`queued` while `cf5ee226` had already landed `EgressPolicy`, `ProviderEgress` and
+`MullvadProbe` in `Sources/Vorssaint/Services/NetworkEgress/` (404 lines), with
+`Tests/MullvadEgressTests.swift` registered in the `mullvad-egress` group and
+`AgentPriceSource` as its caller. The macOS gate I already had in hand proves it ran:
+`mullvad-egress: OK (84 checks, 0.01s)` inside the 124440-check run at `03906740`.
+The refusal shape the row demanded is a policy property - an undeclared or malformed
+declaration refuses every lookup instead of sending the request directly - and the
+probe distinguishes a closed SOCKS port from a live listener whose relay is gone.
+What is not verified is the live path: no Mullvad instance runs on either host, so
+those 84 checks exercise an injected transport, not a real handshake.
+
+**D's three remaining rows cannot be worked, which I had wrong.** D4 (instinct /
+Hermes and other agent integrations), D5 (subscription or API key for the
+companion) and D6 ("Vorssaint dots") are all `needs info`. My earlier plan named
+"finish D's three remaining rows" as the default next lane; that was a stale read of
+the section, and a lane dispatched against it would have produced three guesses.
+D6 in particular is a name whose meaning is not recorded anywhere in the repository.
+
+The pattern worth keeping: both corrections came from grepping the actual tree
+before dispatching, not from re-reading the plan. A ledger row is a memory, and a
+memory that is never re-checked drifts into a claim.
+
+**F3 is retired, not deferred.** `pr-review-plan-20261120.md` is absent from the
+repo, from `git log --all`, from the Mac checkout and from GitHub code search, so
+the row was pointing at a document that has never existed on either host. F3 now
+names the replacement: findings derived from the source in front of us, numbered
+`P86-n` to continue the series rather than pretending the P85 set was ever read.
