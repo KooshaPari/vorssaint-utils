@@ -395,3 +395,37 @@ a tagged feature whose bullet is excluded from the digest gets a page with no
 sentence about what a person can now do, and the de-duplication is one-sided so a
 bullet naming both a tagged feature and a feature with its own sidebar row would
 print twice - unreachable from today's bullets and one changelog sentence away.
+
+## ocgo admin gate: shipped and live
+
+`6b8bd81` on `master`, and the running pool is that binary. The live proof, taken
+after the restart:
+
+| Check | Result |
+|---|---|
+| `GET /reload` | `405 Method Not Allowed` + `Allow: POST` |
+| `POST /reload` (pre-install smoke, isolated port) | `200 {"reloaded": true}`, pool JSON `"reloads": 2` |
+| `GET /pool` | `200`, every `key` field `"<redacted>"`, no long strings, zero literal `sk-` |
+| `GET /healthz` | `200` |
+| real completion through the restarted pool | `finish: stop`, content `OK` |
+| pid | `173835` → `928846` |
+| previous binary | kept at `~/.local/bin/ocgo.bak-20261126T115422Z` |
+
+The cross-review's two conditions were both met before the restart. Nothing outside
+the repo calls `GET /reload`: no match in `~/bin`, `host-ops/bin`, or the user
+systemd units, and `ocgo-serve.service` (which would restart-loop on the same port)
+stays disabled, so only `ocgo.service` was restarted. And the binary was rebuilt
+from the merged tree and installed *before* the restart, because restarting onto
+the old binary would have changed nothing.
+
+A note on checking for leaked keys: `grep -ci 'sk-|api_key|bearer|secret'` over the
+pool JSON returns 7 and is a **false positive** - it matches the environment
+*variable names* (`MINIMAX_API_KEY`, `OC_KO_API_KEY`, ...). The real check is
+structural: parse the JSON, assert every `key` value is the redaction marker, and
+assert no field holds a string long enough to be a credential. That check is clean.
+
+One half of the earlier decision is still owed: `/pool` is redacted but not
+authenticated. It is loopback-bound and `Ocgo.env` configures no client key, so
+this is not reachable off-host; requiring a bearer on the admin surface is a
+separate change that must also teach whatever calls it, and that caller list is
+currently empty.
