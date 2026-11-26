@@ -224,6 +224,14 @@ enum DefaultsKey {
     static let shelfAutomaticExclusions = "shelfAutomaticExclusions" // [bundle id] blocks automatic opening only
     static let extraBrightnessEnabled = "extraBrightnessEnabled"
     static let extraBrightnessLevel = "extraBrightnessLevel"   // Int percent 0-100
+    // Display colour temperature: a daily warm window. Times are minutes after
+    // local midnight, so a schedule that crosses midnight is ordinary data.
+    static let fluxEnabled = "fluxEnabled"
+    static let fluxMode = "fluxMode"                        // FluxSupport.Mode raw value
+    static let fluxSunsetMinute = "fluxSunsetMinute"        // warm begins
+    static let fluxSunriseMinute = "fluxSunriseMinute"      // neutral returns
+    static let fluxTransitionMinutes = "fluxTransitionMinutes"
+    static let fluxNightKelvin = "fluxNightKelvin"          // Double, 1900...6500
     static let brightnessControlEnabled = "brightnessControlEnabled" // sliders for every display
     static let brightnessKeysEnabled = "brightnessKeysEnabled" // brightness keys act on the display under the pointer
     static let brightnessOSDEnabled = "brightnessOSDEnabled" // brightness adjustment overlay
@@ -1423,6 +1431,14 @@ enum Defaults {
         DefaultsKey.shelfAutomaticExclusions: [String](),
         DefaultsKey.extraBrightnessEnabled: false,
         DefaultsKey.extraBrightnessLevel: 100,
+        // Warm colour is opt-in: it changes how every screen looks, so nobody
+        // should meet it by surprise after an update.
+        DefaultsKey.fluxEnabled: false,
+        DefaultsKey.fluxMode: FluxSupport.Mode.sunsetToSunrise.rawValue,
+        DefaultsKey.fluxSunsetMinute: 18 * 60 + 30,
+        DefaultsKey.fluxSunriseMinute: 7 * 60,
+        DefaultsKey.fluxTransitionMinutes: 60,
+        DefaultsKey.fluxNightKelvin: 3400.0,
         DefaultsKey.brightnessControlEnabled: false,
         DefaultsKey.brightnessKeysEnabled: false,
         DefaultsKey.brightnessOSDEnabled: false,

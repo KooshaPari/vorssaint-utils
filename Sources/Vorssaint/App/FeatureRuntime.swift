@@ -317,7 +317,12 @@ final class FeatureRuntime: ObservableObject {
             KeepAwakeManager.shared.syncWithFeatures()
             HotkeyManager.shared.syncWithPreferences()
         },
-        .brightness: { BrightnessService.shared.syncWithPreferences() },
+        .brightness: {
+            BrightnessService.shared.syncWithPreferences()
+            // Warm colour shares the display pipeline; toggling display control
+            // re-reads its schedule too, so a disable there also un-tints.
+            FluxService.shared.syncWithPreferences()
+        },
         .extraBrightness: { ExtraBrightnessService.shared.syncWithPreferences() },
         .bluetoothSleep: { BluetoothSleepService.shared.syncWithPreferences() },
         .quickLauncher: { QuickLauncherService.shared.syncWithPreferences() },

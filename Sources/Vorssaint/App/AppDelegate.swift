@@ -175,6 +175,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         // One binding per feature: only available features are touched, so a
         // feature switched off in the hub never even instantiates here.
         FeatureRuntime.shared.syncAtLaunch()
+        // Warm colour is a display-wide setting rather than a hub tile, so it
+        // reads its own preference instead of riding a feature binding. Its own
+        // enable key is false until someone asks for it.
+        FluxService.shared.syncWithPreferences()
         if AppFeature.monitorPower.isAvailable, PowerSampler.hasInternalBattery {
             MaxCapacityProbe.shared.refreshIfStale()
         }
@@ -326,6 +330,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         if AppFeature.notch.isAvailable { NotchService.shared.stop(restoreCapture: false) }
         // Quitting properly means the start worked, whenever it happened.
         endStartupWatch()
+        // Warm colour first, then display control: a software-dimmed display
+        // captures its own curve on top of everything, so brightness restores
+        // last and the screen cannot be left dim or tinted.
+        FluxService.shared.restoreBeforeTermination()
         if AppFeature.brightness.isAvailable {
             BrightnessService.shared.restoreDisplaysBeforeTermination()
         }

@@ -455,6 +455,12 @@ def main():
           + declaration(brightness, "    private func writeExtendedBrightness(").replace("private ", "", 1)
           + declaration(brightness, "    private static func writeSystemBrightness(").replace("private ", "", 1)
           + "}\n}\n")
+    # The warm-colour schedule is pure by construction, so the whole support
+    # type is sliced as one declaration: no instance state can leak in, and the
+    # tests exercise the same arithmetic the app runs.
+    write("FluxSchedule.swift", "import Foundation\n"
+          + declaration("Sources/Vorssaint/Services/Display/FluxSupport.swift",
+                        "enum FluxSupport {"))
     write("DisplaySpeakerService.swift", "import CoreAudio\nimport CoreGraphics\nimport Foundation\n"
           + "extension DisplaySpeakerVolumeTests {\n"
           + "".join(declaration(brightness, prefix).replace("private ", "", 1) for prefix in [
