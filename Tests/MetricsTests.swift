@@ -206,6 +206,7 @@ struct MetricsTests {
                 RecorderWriterTests.run(suite)
                 RecorderExportChipTests.run { suite.expect($0, $1) }
             }),
+            ("mullvad-egress", { MullvadEgressTests.run(suite) }),
             ("network", {
                 NetworkFeatureTests.run(suite)
                 SpeedTestTests.run(suite)

@@ -41,7 +41,14 @@ enum AgentPriceSource {
     /// The published list, checked before it is handed over; nil on any
     /// failure, which leaves the current list in place.
     static func download(completion: @escaping ((data: Data, list: AgentPriceList)?) -> Void) {
-        AgentDownload.start(remote, limit: AgentPriceList.maximumSize) { data in
+        // This request has to resolve its declared route first. A missing or
+        // malformed declaration is a refusal, not a licence to go direct.
+        guard let policy = ProviderEgressDefaults.policy,
+              case .success(let binding) = policy.resolve(provider: "agent-prices", probe: MullvadProbe()) else {
+            completion(nil)
+            return
+        }
+        AgentDownload.start(remote, limit: AgentPriceList.maximumSize, egress: binding) { data in
             guard let data, let list = AgentPriceList.decode(data) else { completion(nil); return }
             completion((data, list))
         }
@@ -63,7 +70,8 @@ private final class AgentDownload: NSObject, URLSessionDataDelegate {
         self.completion = completion
     }
 
-    static func start(_ url: URL, limit: Int, completion: @escaping (Data?) -> Void) {
+    static func start(_ url: URL, limit: Int, egress: EgressBinding,
+                      completion: @escaping (Data?) -> Void) {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         request.setValue("Vorssaint/\(AppInfo.version)", forHTTPHeaderField: "User-Agent")
         let configuration = URLSessionConfiguration.ephemeral
@@ -72,6 +80,7 @@ private final class AgentDownload: NSObject, URLSessionDataDelegate {
         configuration.httpCookieStorage = nil
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
+        ProviderEgressSession.configure(configuration, for: egress)
         let delegate = AgentDownload(limit: limit, host: url.host, completion: completion)
         let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
         session.dataTask(with: request).resume()

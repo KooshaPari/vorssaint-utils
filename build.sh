@@ -588,6 +588,9 @@ if (( TEST )); then
         Sources/Vorssaint/Services/Metrics/NetworkSampler.swift
         Sources/Vorssaint/Services/Metrics/NetworkAddressService.swift
         Sources/Vorssaint/Services/Tailnet/TailnetSupport.swift
+        Sources/Vorssaint/Services/NetworkEgress/EgressPolicy.swift
+        Sources/Vorssaint/Services/NetworkEgress/MullvadProbe.swift
+        Sources/Vorssaint/Services/NetworkEgress/ProviderEgress.swift
         Sources/Vorssaint/Services/Metrics/SpeedTest.swift
         Sources/Vorssaint/Services/Metrics/PeripheralBatterySampler.swift
         Sources/Vorssaint/Services/Metrics/PeripheralBatterySupport.swift
