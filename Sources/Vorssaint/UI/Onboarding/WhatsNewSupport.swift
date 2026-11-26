@@ -61,6 +61,22 @@ struct WhatsNewSections: Equatable {
     /// Nothing worth an interruption: no new feature, and every change is
     /// about a feature this Mac does not have.
     var hasContentForYou: Bool { !newFeatures.isEmpty || !yourFeatures.isEmpty }
+
+    /// The same sections, narrowed to what a search keeps. Only the two lists
+    /// the sidebar draws are filtered: `newFeatures` stays whole because the
+    /// overview's counts describe the update, not the query.
+    func searching(_ query: String) -> WhatsNewSections {
+        var sections = self
+        sections.yourFeatures = WhatsNewSupport.searching(yourFeatures, query: query)
+        sections.notInstalled = WhatsNewSupport.searching(notInstalled, query: query)
+        return sections
+    }
+
+    /// True when a search hid everything the sidebar would otherwise draw.
+    func isEmpty(for query: String) -> Bool {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !needle.isEmpty && yourFeatures.isEmpty && notInstalled.isEmpty
+    }
 }
 
 enum WhatsNewSupport {
@@ -254,6 +270,46 @@ enum WhatsNewSupport {
             let matching = changes.filter { $0.kind == kind }
             return matching.isEmpty ? nil : WhatsNewChangeGroup(kind: kind, changes: matching)
         }
+    }
+
+    // MARK: - Searching the window
+
+    /// The rows a search keeps. A blank query is not a filter: the list it
+    /// returns is the list it was given, unchanged and in the same order.
+    ///
+    /// A row is kept when its own name or one of its own change lines matches.
+    /// A row whose nested new feature matches is kept too, so searching for
+    /// what a feature does does not hide the Settings row it sits under, and
+    /// that parent keeps only the children that matched. The one case that
+    /// keeps a whole subtree is a parent that matches on its own: then all of
+    /// its children come with it, since they are part of what matched.
+    static func searching(_ rows: [WhatsNewRow], query: String) -> [WhatsNewRow] {
+        let needle = folded(query)
+        guard !needle.isEmpty else { return rows }
+        return rows.compactMap { row in
+            if matches(row, needle) { return row }
+            let kept = row.children.filter { matches($0, needle) }
+            guard !kept.isEmpty else { return nil }
+            var row = row
+            row.children = kept
+            return row
+        }
+    }
+
+    /// Case-, accent- and width-insensitive, so "reseau" finds "réseau" and a
+    /// reader does not have to reproduce the title's capitalisation to find it.
+    /// No locale: Turkish folds a dotted I to a dotless one, which would make
+    /// this field answer differently there. The settings search folds the same
+    /// way for the same reasons.
+    private static func folded(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
+                     locale: nil)
+    }
+
+    private static func matches(_ row: WhatsNewRow, _ needle: String) -> Bool {
+        if folded(row.title).contains(needle) { return true }
+        return row.changes.contains { folded($0.text).contains(needle) }
     }
 }
 

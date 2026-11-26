@@ -19,6 +19,9 @@ struct WhatsNewDigestView: View {
     @State private var selection: Selection? = .overview
     @State private var unread: Set<WhatsNewRow.ID>
     @State private var showsNotInstalled = false
+    /// What the person typed into the search field. Blank shows the window as
+    /// it opens, so nothing is hidden until something is asked for.
+    @State private var query = ""
     @State private var titles: [WhatsNewRow.ID: String] = [:]
 
     private enum Selection: Hashable {
@@ -68,35 +71,93 @@ struct WhatsNewDigestView: View {
 
     private func title(of row: WhatsNewRow) -> String { titles[row.id] ?? row.title }
 
+    /// The rows a search keeps. An empty query keeps everything.
+    private var filtered: WhatsNewSections { sections.searching(query) }
+
+    /// The moment a feature became new, in the reader's language, or nil for a
+    /// feature that is not new, so callers never have to ask twice.
+    private func newAsOfText(for row: WhatsNewRow) -> String? {
+        guard row.isNew, let feature = row.feature else { return nil }
+        return NewFeatureBadges.newAsOfText(for: feature, locale: l10n.language.formattingLocale())
+    }
+
     // MARK: Sidebar
 
     private var sidebar: some View {
-        List(selection: $selection) {
-            versionRow
-                .tag(Selection.overview)
-            if !sections.yourFeatures.isEmpty {
-                Section(text.yourFeatures) {
-                    ForEach(sections.yourFeatures) { row in
-                        sidebarRow(row, installed: true)
-                        // What this build adds reads under the row it belongs
-                        // to, rather than in a group of its own.
-                        ForEach(row.children) { child in
-                            sidebarRow(child, installed: true, nested: true)
+        VStack(spacing: 0) {
+            searchField
+            List(selection: $selection) {
+                versionRow
+                    .tag(Selection.overview)
+                if filtered.isEmpty(for: query) {
+                    Text(String(format: text.searchNoMatchFormat, query))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if !filtered.yourFeatures.isEmpty {
+                    Section(text.yourFeatures) {
+                        ForEach(filtered.yourFeatures) { row in
+                            sidebarRow(row, installed: true)
+                            // What this build adds reads under the row it
+                            // belongs to, rather than in a group of its own.
+                            ForEach(row.children) { child in
+                                sidebarRow(child, installed: true, nested: true)
+                            }
                         }
                     }
                 }
-            }
-            if !sections.notInstalled.isEmpty {
-                // Collapsed until asked for. The sidebar's own disclosure,
-                // unlike a header button, also opens from VoiceOver.
-                Section(isExpanded: $showsNotInstalled) {
-                    ForEach(sections.notInstalled) { sidebarRow($0, installed: false) }
-                } header: {
-                    Text(text.notInstalled)
+                if !filtered.notInstalled.isEmpty {
+                    // Collapsed until asked for. The sidebar's own disclosure,
+                    // unlike a header button, also opens from VoiceOver.
+                    // Searching opens it, so a match in there can be seen.
+                    Section(isExpanded: notInstalledExpanded) {
+                        ForEach(filtered.notInstalled) { sidebarRow($0, installed: false) }
+                    } header: {
+                        Text(text.notInstalled)
+                    }
                 }
             }
+            .listStyle(.sidebar)
         }
-        .listStyle(.sidebar)
+    }
+
+    /// Open while a search is running, otherwise as the person left it.
+    private var notInstalledExpanded: Binding<Bool> {
+        Binding(get: { showsNotInstalled || !query.isEmpty },
+                set: { showsNotInstalled = $0 })
+    }
+
+    /// Filters the list as it is typed. Local only: nothing leaves the window.
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField(text.searchPlaceholder, text: $query)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                // A field on its own has no label VoiceOver can announce, so
+                // the field's own words become its name.
+                .accessibilityLabel(text.searchPlaceholder)
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(l10n.s.actionClear)
+            }
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 
     private var versionRow: some View {
@@ -120,7 +181,8 @@ struct WhatsNewDigestView: View {
     private func sidebarRow(_ row: WhatsNewRow, installed: Bool, nested: Bool = false) -> some View {
         let isSelected = selection == .row(row.id)
         let isUnread = unread.contains(row.id)
-        let spoken = [row.isNew ? text.newFeatures : nil, isUnread ? text.updated : nil]
+        let moment = newAsOfText(for: row).map { String(format: text.newAsOfFormat, $0) }
+        let spoken = [row.isNew ? text.newFeatures : nil, isUnread ? text.updated : nil, moment]
             .compactMap { $0 }
         return HStack(spacing: 9) {
             Image(systemName: row.icon)
@@ -152,7 +214,7 @@ struct WhatsNewDigestView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if case .row(let id) = selection, let row = sections.allRows.first(where: { $0.id == id }) {
+        if case .row(let id) = selection, let row = filtered.allRows.first(where: { $0.id == id }) {
             WhatsNewFeaturePage(row: row, title: title(of: row), onOpenSettings: onOpenSettings)
                 .id(row.id)
         } else {
@@ -245,6 +307,13 @@ private struct WhatsNewFeaturePage: View {
     private var text: WhatsNewStrings { FeatureStrings.whatsNew(l10n.language) }
     private var hub: FeatureHubStrings { FeatureStrings.hub(l10n.language) }
 
+    /// When this feature became new, written for the reader's language, or nil
+    /// for a feature that is not new.
+    private var newAsOfMoment: String? {
+        guard row.isNew, let feature = row.feature else { return nil }
+        return NewFeatureBadges.newAsOfText(for: feature, locale: l10n.language.formattingLocale())
+    }
+
     var body: some View {
         Form {
             Section {
@@ -257,6 +326,13 @@ private struct WhatsNewFeaturePage: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
                             .font(.title2.bold())
+                        // When this feature became new, straight under the name
+                        // someone just searched for.
+                        if let moment = newAsOfMoment {
+                            Text(String(format: text.newAsOfFormat, moment))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         if let feature = row.feature {
                             Text(feature.hubDescription(hub))
                                 .foregroundStyle(.secondary)

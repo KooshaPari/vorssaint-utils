@@ -36,6 +36,8 @@ enum NewFeatureBadgesTests {
         suite.expect(becameNewAt(in: "a change, new as of 2026-11-26") == nil,
                      "a bare date does not name the moment it became new")
         checkAgreement(entries, suite: suite)
+        checkStamps(entries, suite: suite)
+        checkWindowSearch(suite)
         checkSearch(suite)
         checkNesting(suite)
     }
@@ -99,7 +101,138 @@ enum NewFeatureBadgesTests {
         }
     }
 
-    // MARK: Search
+    // MARK: The moment each feature became new
+
+    /// The changelog is what a reviewer reads; `NewFeatureBadges.newAsOf` is
+    /// what the window prints. Two records of one moment drift apart unless
+    /// something compares them, so this does: same features, same instant,
+    /// and a line the window can show in the reader's language.
+    private static func checkStamps(_ entries: [Entry], suite: TestSuite) {
+        let tagged = NewFeatureBadges.tagged
+        let stamped = Set(NewFeatureBadges.newAsOf.keys)
+        for feature in tagged.sorted(by: { $0.rawValue < $1.rawValue }) {
+            suite.expect(stamped.contains(feature),
+                         "NewFeatureBadges.newAsOf carries \(feature.rawValue), which is tagged")
+        }
+        for feature in stamped.subtracting(tagged).sorted(by: { $0.rawValue < $1.rawValue }) {
+            suite.expect(false,
+                         "NewFeatureBadges.newAsOf stamps \(feature.rawValue), which is not tagged")
+        }
+        for entry in entries.sorted(by: { $0.feature.rawValue < $1.feature.rawValue }) {
+            let name = entry.feature.rawValue
+            guard let moment = NewFeatureBadges.newAsOfDate(entry.feature) else {
+                suite.expect(false, "\(name) has a readable stamp in NewFeatureBadges.newAsOf")
+                continue
+            }
+            suite.expect(moment == entry.becameNewAt,
+                         "\(name) is stamped \(moment) in the window and \(entry.becameNewAt) in the changelog")
+
+            let utc = TimeZone(identifier: "UTC") ?? .current
+            let english = NewFeatureBadges.newAsOfText(for: entry.feature,
+                                                       locale: Locale(identifier: "en_US"),
+                                                       timeZone: utc)
+            let german = NewFeatureBadges.newAsOfText(for: entry.feature,
+                                                      locale: Locale(identifier: "de_DE"),
+                                                      timeZone: utc)
+            suite.expect(english != nil, "\(name) reads its moment in English")
+            // A raw ISO stamp in a window is a wire format, not a sentence.
+            suite.expect(english != NewFeatureBadges.newAsOf[entry.feature],
+                         "\(name) shows its moment as a date, not as the stamp itself")
+            suite.expect(english != german,
+                         "\(name) writes its moment for the reader's language")
+        }
+        // A feature that is not new has no moment, and a non-feature cannot be
+        // stamped at all, so the window never invents one.
+        suite.expect(NewFeatureBadges.newAsOfDate(iso8601: "2026-11-26") == nil,
+                     "a bare date is not a moment")
+        suite.expect(NewFeatureBadges.newAsOfDate(iso8601: "2026-11-26T10:57Z") != nil,
+                     "a stamp down to the minute is a moment")
+    }
+
+    // MARK: Searching the window
+
+    /// The window's own filter. It narrows the two lists the sidebar draws and
+    /// leaves the overview's counts alone, because a search says what to read
+    /// first, not what this update contains.
+    private static func checkWindowSearch(_ suite: TestSuite) {
+        func row(_ title: String, _ id: WhatsNewRow.ID, feature: AppFeature? = nil,
+                 changes: [ReleaseChange] = [], children: [WhatsNewRow] = []) -> WhatsNewRow {
+            WhatsNewRow(id: id, title: title, icon: "circle", feature: feature,
+                        destination: nil, changes: changes, children: children)
+        }
+        let clipboard = row("Clipboard history", .newFeature(.clipboardHistory),
+                            feature: .clipboardHistory, changes: [
+                                ReleaseChange(text: "Keeps copied text and images", kind: .new,
+                                              version: "3.4.5", features: [.clipboardHistory]),
+                            ])
+        let paste = row("Paste plain", .newFeature(.pastePlain), feature: .pastePlain, changes: [
+            ReleaseChange(text: "Voit le réseau sans mise en forme", kind: .new,
+                          version: "3.4.5", features: [.pastePlain]),
+        ])
+        let page = row("Clipboard", .settings(.page(.clipboard)), children: [clipboard, paste])
+        let other = row("Not installed yet", .notInstalled(.portManager), feature: .portManager)
+        let sections = WhatsNewSections(newFeatures: [clipboard, paste],
+                                        yourFeatures: [page], notInstalled: [other])
+
+        suite.expect(sections.searching("") == sections,
+                     "an empty search leaves the window as it opens")
+        suite.expect(sections.searching("   ") == sections,
+                     "a search of spaces only leaves the window as it opens")
+        suite.expect(!sections.isEmpty(for: ""),
+                     "a blank search is never reported as finding nothing")
+
+        let byTitle = sections.searching("CLIPBOARD HISTORY")
+        suite.expect(byTitle.yourFeatures.count == 1,
+                     "a title match keeps the row it names")
+        suite.expect(byTitle.yourFeatures.first?.children.map(\.title) == ["Clipboard history"],
+                     "a parent kept for one child carries only that child")
+
+        // A parent that matches on its own brings its children with it: they
+        // are part of what matched.
+        let byParent = sections.searching("clipboard")
+        suite.expect(byParent.yourFeatures.first?.children.count == 2,
+                     "a parent matching on its own keeps its whole subtree")
+
+        // Accents and case are the reader's, not the title's.
+        suite.expect(sections.searching("reseau").yourFeatures.first?.children.map(\.title)
+                        == ["Paste plain"],
+                     "an accented line is found without the accent")
+        suite.expect(sections.searching("keeps COPIED").yourFeatures.first?.children.count == 1,
+                     "a change line is searched, not only the row's name")
+
+        // A label typed through an IME, or pasted from a page, can arrive in
+        // full-width letters. They are the same word to the person reading it.
+        let wide = WhatsNewSections(
+            newFeatures: [],
+            yourFeatures: [row("Ｗｉｄｅ clipboard", .settings(.page(.clipboard)))],
+            notInstalled: []
+        )
+        suite.expect(wide.searching("wide").yourFeatures.count == 1,
+                     "a full-width title is found by half-width letters")
+        suite.expect(wide.searching("ＷＩＤＥ").yourFeatures.count == 1,
+                     "a full-width search finds the same row")
+
+        let none = sections.searching("no-such-feature-anywhere")
+        suite.expect(none.isEmpty(for: "no-such-feature-anywhere"),
+                     "a search that matches nothing is reported as empty")
+        suite.expect(none.yourFeatures.isEmpty && none.notInstalled.isEmpty,
+                     "a search that matches nothing hides both sidebar lists")
+        suite.expect(none.newFeatures == sections.newFeatures,
+                     "a search leaves the overview's new-feature counts alone")
+        suite.expect(!none.isEmpty(for: ""),
+                     "the empty state never outlives the search that caused it")
+
+        // A row is never invented or repeated to fill the list.
+        for query in ["clipboard", "paste", "reseau", "nothing-here"] {
+            let kept = sections.searching(query).yourFeatures.flatMap { $0.children.map(\.id) }
+            suite.expect(Set(kept).count == kept.count,
+                         "searching \"\(query)\" repeats no row")
+            suite.expect(kept.allSatisfy { [clipboard.id, paste.id].contains($0) },
+                         "searching \"\(query)\" invents no row")
+        }
+    }
+
+    // MARK: Settings search
 
     private static func checkSearch(_ suite: TestSuite) {
         let items = SettingsSearchSupport.featureItems(language: .enUS, title: { $0.rawValue })
