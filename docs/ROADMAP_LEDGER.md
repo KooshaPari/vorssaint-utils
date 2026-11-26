@@ -557,3 +557,30 @@ So my unauthenticated 200 from `GET /pool` was the design working, not a gap. Th
 README documents both the loopback-only bind and the bearer defence. Nothing is owed
 here; what remains owed on the key front is the operator's rotation, which is a
 different item and still genuinely outstanding.
+
+## Per-pillar macOS evidence, one run, quoted counts
+
+The debt this pays: only 3 of 19 shipped rows carried a macOS count, because most rows
+predate the practice of quoting one. Rather than retro-fit a number onto twelve rows
+(which would be a claim about a run that never covered them), here is the mapping from
+every shipped pillar to the group that actually exercises it, with that group's count
+from the single run at `03906740` - the same run whose total is 124,440. A row is
+"macOS-evidenced" when its symbol appears in a file the named group runs.
+
+| Pillar | Group(s) that exercise it | Count in the 03906740 run |
+| --- | --- | --- |
+| A clipboard parity (A1-A9) | `clipboard` (ClipboardFeatureTests + PastePlainTests), `transient-paste`, `notch` (panel surface) | 1420 + 18 + 67933 |
+| A2 KNU (K1-K4) | `updates` (carries `NewFeatureBadgesTests`, so `checkStamps` and the tag sets), `features`, `feature-hub-layout`, `localization` (15-language strings) | 1228 + 1422 + 178 + 9147 |
+| B window policy | `window-policy` (WindowPolicyTests), `window-layout`, `spaces-order` | 27 + 580 + 120 |
+| D1 jcode reader, D2 herdr panes | `agents` (2720, includes `NotchAgentTests` -> `HerdrPaneSourceTests`) | 2720 |
+| D3 per-key registry and routes | `agent-keys` (AgentKeyPoolTests + Usage + Provisioning) | 125 |
+| E2 Mullvad egress | `mullvad-egress` | 84 |
+| E1 Tailscale | none - no group exercises it, and the row is `queued` | not applicable |
+
+Two honest limits. First, a group count is a delta and may overlap its parent, so these
+numbers must not be added; only the 124,440 total is additive. Second, "the group ran"
+is weaker than "this row's assertion ran": the group-to-file mapping above is read from
+`Tests/MetricsTests.swift` and the test files' own `run` entry points, not from a
+per-assertion trace. Rows whose behaviour is a compiled-in decision (E2's refusal policy,
+D2's no-pane-contents rule) are additionally checked structurally from source, which is
+the stronger evidence for those.
