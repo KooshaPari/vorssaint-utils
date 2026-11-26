@@ -269,9 +269,15 @@ struct ClipboardSettings: View {
                     Text(placementText.label(for: value)).tag(value)
                 }
             }
-            // The line describes the choice in hand, so it says what the next
-            // opening will do rather than listing every possibility.
-            Text(placementText.caption(for: historyPlacement))
+            // The cards shelf places itself along the bottom, so a window
+            // placement cannot apply there: the picker says so rather than
+            // offering a place it will not use. The line below describes the
+            // choice in hand, so it says what the next opening will do rather
+            // than listing every possibility.
+            .disabled(ClipboardPlacementStrings.placementIsFixed(cardsLayout: historyLayout == .cards,
+                                                                placement: historyPlacement))
+            Text(placementText.caption(for: historyPlacement,
+                                       cardsLayout: historyLayout == .cards))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Toggle(text.showSourceAppIconsInList, isOn: $showSourceAppIcons)

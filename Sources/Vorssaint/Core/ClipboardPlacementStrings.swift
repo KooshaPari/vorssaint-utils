@@ -18,6 +18,9 @@ struct ClipboardPlacementStrings {
     let topCenterCaption: String
     let island: String
     let islandCaption: String
+    /// The line under the picker while the cards layout is selected: that
+    /// layout places itself, so the choice in hand is not what opens.
+    let cardsCaption: String
 
     func label(for placement: ClipboardSurfacePlacement) -> String {
         switch placement {
@@ -40,6 +43,25 @@ struct ClipboardPlacementStrings {
         case .topCenter: return topCenterCaption
         case .dynamicIsland: return islandCaption
         }
+    }
+
+    /// The line under the picker. A layout that places the window itself
+    /// takes the caption away from the choice, because the choice is not what
+    /// the next opening will do.
+    func caption(for placement: ClipboardSurfacePlacement, cardsLayout: Bool) -> String {
+        guard !Self.placementIsFixed(cardsLayout: cardsLayout, placement: placement) else {
+            return cardsCaption
+        }
+        return self.caption(for: placement)
+    }
+
+    /// Whether the picker has nothing to offer in this layout. The cards shelf
+    /// places itself along the bottom, so a window placement cannot apply
+    /// there; the island is not a place on a display, so choosing it still
+    /// means something in either layout.
+    static func placementIsFixed(cardsLayout: Bool,
+                                placement: ClipboardSurfacePlacement) -> Bool {
+        cardsLayout && placement != .dynamicIsland
     }
 }
 
@@ -77,7 +99,8 @@ extension ClipboardPlacementStrings {
         topCenter: "Top center",
         topCenterCaption: "Opens centered under the menu bar of the display the pointer is on.",
         island: "Dynamic Island",
-        islandCaption: "Uses the island’s clipboard page. Needs the island on and showing Clipboard."
+        islandCaption: "Uses the island’s clipboard page. Needs the island on and showing Clipboard.",
+        cardsCaption: "The Cards layout sits along the bottom of the screen, so a placement is not used. Choose List to pick a place."
     )
 
     static let ptBR = ClipboardPlacementStrings(
@@ -91,7 +114,8 @@ extension ClipboardPlacementStrings {
         topCenter: "Centro superior",
         topCenterCaption: "Abre centralizada sob a barra de menus da tela em que o ponteiro está.",
         island: "Dynamic Island",
-        islandCaption: "Usa a página de área de transferência da ilha. Exige a ilha ativa e o módulo Área de transferência."
+        islandCaption: "Usa a página de área de transferência da ilha. Exige a ilha ativa e o módulo Área de transferência.",
+        cardsCaption: "O layout Cartões fica na parte inferior da tela, então a posição não é usada. Escolha Lista para escolher um lugar."
     )
 
     static let tr = ClipboardPlacementStrings(
@@ -99,13 +123,14 @@ extension ClipboardPlacementStrings {
         nearCursor: "İmlecin yanında",
         nearCursorCaption: "İmlecin bulunduğu ekranda, imlecin yanında açılır.",
         remembered: "Son kaldığı yer",
-        rememberedCaption: "Pencereyi bıraktığınız yeri korur. Island panosu açıksa orada açılır.",
+        rememberedCaption: "Pencereyi bıraktığınız yeri korur. Dynamic Island panosu açıksa orada açılır.",
         bottomOfScreen: "Ekranın altı",
         bottomOfScreenCaption: "İmlecin bulunduğu ekranın alt kenarına yerleşir.",
         topCenter: "Üst orta",
         topCenterCaption: "İmlecin bulunduğu ekranın menü çubuğunun altında ortalanır.",
         island: "Dynamic Island",
-        islandCaption: "Island’ın pano sayfasını kullanır. Island açık ve Pano modülü görünür olmalı."
+        islandCaption: "Dynamic Island’ın pano sayfasını kullanır. Dynamic Island açık ve Pano modülü görünür olmalı.",
+        cardsCaption: "Kartlar düzeni ekranın alt kısmında durur, bu yüzden konum kullanılmaz. Bir yer seçmek için Liste’yi seçin."
     )
 
     static let ru = ClipboardPlacementStrings(
@@ -119,7 +144,8 @@ extension ClipboardPlacementStrings {
         topCenter: "Сверху по центру",
         topCenterCaption: "Открывается по центру под строкой меню экрана, на котором находится указатель.",
         island: "Dynamic Island",
-        islandCaption: "Использует страницу буфера обмена в острове. Нужно включить остров и модуль «Буфер обмена»."
+        islandCaption: "Использует страницу буфера обмена в острове. Нужно включить остров и модуль «Буфер обмена».",
+        cardsCaption: "Макет «Карточки» расположен у нижнего края экрана, поэтому размещение не используется. Выберите «Список», чтобы задать место."
     )
 
     static let es = ClipboardPlacementStrings(
@@ -133,7 +159,8 @@ extension ClipboardPlacementStrings {
         topCenter: "Centro superior",
         topCenterCaption: "Se abre centrada bajo la barra de menús de la pantalla donde está el puntero.",
         island: "Dynamic Island",
-        islandCaption: "Usa la página de portapapeles de la isla. Requiere la isla activa y el módulo Portapapeles."
+        islandCaption: "Usa la página de portapapeles de la isla. Requiere la isla activa y el módulo Portapapeles.",
+        cardsCaption: "La vista Tarjetas se coloca en la parte inferior, así que la posición no se usa. Elige Lista para elegir un lugar."
     )
 
     static let sk = ClipboardPlacementStrings(
@@ -147,7 +174,8 @@ extension ClipboardPlacementStrings {
         topCenter: "Hore v strede",
         topCenterCaption: "Otvorí sa vycentrované pod lištou ponuky obrazovky, na ktorej je ukazovateľ.",
         island: "Dynamic Island",
-        islandCaption: "Použije stránku schránky v ostrove. Vyžaduje zapnutý ostrov s modulom Schránka."
+        islandCaption: "Použije stránku schránky v ostrove. Vyžaduje zapnutý ostrov s modulom Schránka.",
+        cardsCaption: "Rozloženie Karty je naspodku obrazovky, preto sa poloha nepoužije. Miesto vyberiete v rozložení Zoznam."
     )
 
     static let de = ClipboardPlacementStrings(
@@ -161,7 +189,8 @@ extension ClipboardPlacementStrings {
         topCenter: "Oben mittig",
         topCenterCaption: "Öffnet mittig unter der Menüleiste des Bildschirms, auf dem der Zeiger ist.",
         island: "Dynamic Island",
-        islandCaption: "Nutzt die Zwischenablage-Seite der Insel. Die Insel muss an sein und Zwischenablage zeigen."
+        islandCaption: "Nutzt die Zwischenablage-Seite der Insel. Die Insel muss an sein und Zwischenablage zeigen.",
+        cardsCaption: "Die Ansicht „Karten“ sitzt unten am Bildschirm, deshalb wird die Platzierung nicht verwendet. Wähle „Liste“ für einen Platz."
     )
 
     static let fr = ClipboardPlacementStrings(
@@ -175,7 +204,8 @@ extension ClipboardPlacementStrings {
         topCenter: "Haut centré",
         topCenterCaption: "S’ouvre centré sous la barre des menus de l’écran où se trouve le pointeur.",
         island: "Dynamic Island",
-        islandCaption: "Utilise la page presse-papiers de l’îlot. Nécessite l’îlot actif avec le module Presse-papiers."
+        islandCaption: "Utilise la page presse-papiers de l’îlot. Nécessite l’îlot actif avec le module Presse-papiers.",
+        cardsCaption: "La vue Cartes se place en bas de l’écran, la position n’y est donc pas utilisée. Choisissez Liste pour un emplacement."
     )
 
     static let it = ClipboardPlacementStrings(
@@ -189,7 +219,8 @@ extension ClipboardPlacementStrings {
         topCenter: "In alto al centro",
         topCenterCaption: "Si apre centrata sotto la barra dei menu dello schermo in cui si trova il puntatore.",
         island: "Dynamic Island",
-        islandCaption: "Usa la pagina appunti dell’isola. Richiede l’isola attiva con il modulo Appunti."
+        islandCaption: "Usa la pagina appunti dell’isola. Richiede l’isola attiva con il modulo Appunti.",
+        cardsCaption: "La vista Schede sta in fondo allo schermo, quindi la posizione non viene usata. Scegli Elenco per scegliere un punto."
     )
 
     static let ja = ClipboardPlacementStrings(
@@ -203,7 +234,8 @@ extension ClipboardPlacementStrings {
         topCenter: "上部中央",
         topCenterCaption: "ポインタがある画面のメニューバーの下、中央に開きます。",
         island: "Dynamic Island",
-        islandCaption: "アイランドのクリップボードページを使います。アイランドがオンで、クリップボードを表示している必要があります。"
+        islandCaption: "アイランドのクリップボードページを使います。アイランドがオンで、クリップボードを表示している必要があります。",
+        cardsCaption: "カード表示は画面下部に固定されるため、配置は使われません。場所を選ぶにはリストに切り替えてください。"
     )
 
     static let ko = ClipboardPlacementStrings(
@@ -217,7 +249,8 @@ extension ClipboardPlacementStrings {
         topCenter: "상단 중앙",
         topCenterCaption: "포인터가 있는 화면의 메뉴 막대 아래 중앙에 열립니다.",
         island: "Dynamic Island",
-        islandCaption: "아일랜드의 클립보드 페이지를 사용합니다. 아일랜드가 켜져 있고 클립보드를 표시해야 합니다."
+        islandCaption: "아일랜드의 클립보드 페이지를 사용합니다. 아일랜드가 켜져 있고 클립보드를 표시해야 합니다.",
+        cardsCaption: "카드 보기는 화면 아래쪽에 고정되므로 배치가 사용되지 않습니다. 위치를 선택하려면 목록으로 전환하세요."
     )
 
     static let zhHans = ClipboardPlacementStrings(
@@ -231,7 +264,8 @@ extension ClipboardPlacementStrings {
         topCenter: "顶部居中",
         topCenterCaption: "在指针所在屏幕的菜单栏下方居中打开。",
         island: "Dynamic Island",
-        islandCaption: "使用岛屿的剪贴板页面。需要开启岛屿并显示剪贴板。"
+        islandCaption: "使用岛屿的剪贴板页面。需要开启岛屿并显示剪贴板。",
+        cardsCaption: "卡片视图固定在屏幕底部，因此不会使用所选位置。要选择位置，请切换到列表。"
     )
 
     static let zhTW = ClipboardPlacementStrings(
@@ -245,7 +279,8 @@ extension ClipboardPlacementStrings {
         topCenter: "頂部置中",
         topCenterCaption: "在指標所在螢幕的選單列下置中開啟。",
         island: "Dynamic Island",
-        islandCaption: "使用島嶼的剪貼簿頁面。需要開啟島嶼並顯示剪貼簿。"
+        islandCaption: "使用島嶼的剪貼簿頁面。需要開啟島嶼並顯示剪貼簿。",
+        cardsCaption: "卡片檢視固定在螢幕底部，因此不會使用所選位置。要選擇位置，請切換到列表。"
     )
 
     static let zhHK = ClipboardPlacementStrings(
@@ -259,7 +294,8 @@ extension ClipboardPlacementStrings {
         topCenter: "頂部置中",
         topCenterCaption: "喺指標所在螢幕嘅選單列下置中開啟。",
         island: "Dynamic Island",
-        islandCaption: "使用島嶼嘅剪貼簿頁面。需要開啟島嶼並顯示剪貼簿。"
+        islandCaption: "使用島嶼嘅剪貼簿頁面。需要開啟島嶼並顯示剪貼簿。",
+        cardsCaption: "卡片檢視固定在螢幕底部，因此不會使用所選位置。要選擇位置，請切換到列表。"
     )
 
     static let uk = ClipboardPlacementStrings(
@@ -273,6 +309,7 @@ extension ClipboardPlacementStrings {
         topCenter: "Угорі по центру",
         topCenterCaption: "Відкривається по центру під рядком меню екрана, на якому перебуває вказівник.",
         island: "Dynamic Island",
-        islandCaption: "Використовує сторінку буфера обміну в острові. Потрібно ввімкнути острів і модуль «Буфер обміну»."
+        islandCaption: "Використовує сторінку буфера обміну в острові. Потрібно ввімкнути острів і модуль «Буфер обміну».",
+        cardsCaption: "Макет «Картки» розташований унизу екрана, тому розміщення не використовується. Виберіть «Список», щоб задати місце."
     )
 }
