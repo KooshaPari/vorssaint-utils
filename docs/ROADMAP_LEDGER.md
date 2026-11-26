@@ -37,8 +37,8 @@ parent sidebar item)".
 | # | Item | Status |
 | --- | --- | --- |
 | K1 | A KNU/new feature renders under its parent Settings sidebar row in the What's New window, not in its own top-level group | shipped (124368 checks PASS at `1163eaf5`) |
-| K2 | KNU entries are reachable from Settings search, or from a dedicated page | shipped, with the gap the review found: Settings search matches KNU, but the What's New window itself has no search field |
-| K3 | `CHANGELOG.md` carries a `### What's KNU` subsection with the date and time each item became new, so "what is new for a user as of <date/time>" is reviewable | shipped (the stamp lives in `CHANGELOG.md`; see the open follow-ups) |
+| K2 | KNU entries are reachable from Settings search, or from a dedicated page | shipped: Settings search matches KNU, and the What's New window now has its own search field (124440 checks PASS at `03906740`); the window narrows by title and by change line, and a blank query is the identity rather than a filter |
+| K3 | `CHANGELOG.md` carries a `### What's KNU` subsection with the date and time each item became new, so "what is new for a user as of <date/time>" is reviewable | shipped: `CHANGELOG.md` carries the stamp, and the window now renders it per feature in the reader's locale (`NewFeatureBadges.newAsOf` beside `tagged`, with a test that fails if the stamp and the changelog disagree in either direction) at `03906740` |
 | K4 | A test fails if the What's KNU section and `NewFeatureBadges.tagged` disagree | shipped (agreement is tested in both directions) |
 
 Source of truth for "new in this build" is `Sources/Vorssaint/Core/NewFeatureBadges.swift`.
@@ -444,3 +444,45 @@ in `Ocgo.env` plus `MINIMAX_API_KEY`. The pool reports six ocgo keys against fiv
 `OC_*` names, so one entry is being counted from somewhere other than that file; it
 does not change the redaction finding, and it is the kind of count to reconcile before
 rotating rather than after.
+
+## The KNU requirement is now met end to end
+
+`TESTS OK (124440 checks)` at `03906740`, exit 0, 276 s, all three auxiliary suites
+OK. Fifty-nine above 124381, and unlike the previous lanes these new suites run
+inside the real test executable, so the macOS gate exercised the assertions rather
+than merely compiling them.
+
+The operator's sentence was "KNU should be searchable or have a dedicated page +
+what's KNU section in changelog I can clearly review to see what's new for a user as
+of xyz date/time item", with entries "under their parent item". Every clause now
+resolves to something a person can do in the app: the entry sits under its parent
+Settings row (K1), Settings search finds it and the What's New window has its own
+search field (K2), the changelog carries the moment and the window renders that
+moment per feature in the reader's language (K3), and a test fails if the changelog
+and the tag disagree in either direction (K4).
+
+What makes the stamp trustworthy is that it is not a second copy: `tagged` still owns
+*which* features are new, `newAsOf` carries only the moment, and `checkStamps` reads
+`CHANGELOG.md` and fails if the two disagree. The failure mode this prevents is the
+one that nearly shipped last lane - a fact that lives in a file nobody renders.
+
+The search field is honest about being a filter, not a second index: a blank query
+returns the input unchanged, a parent that matches keeps its whole subtree, a parent
+that does not match survives only with the children that did, and the overview counts
+stay describing the update rather than the query. Folding is
+case/diacritic/width-insensitive with `locale: nil`, matching
+`SettingsSearchSupport.fold`, because a locale-aware fold lets Turkish map a dotted
+I differently and would answer the same query two ways in two languages.
+
+Verified beyond the green run: `swiftc -parse` on all five touched files, a
+Foundation-only harness (28 checks) over the two new pure functions, and mutation
+tests - drifting the stamp by one minute reddens only `checkStamps`, and making
+`searching` return its input reddens only the filter suites, so the two are
+independent rather than mutually masking. All 15 languages carry the three new
+strings with exactly one `%@` each.
+
+Not verified, and named as such by the lane: the window as rendered. Field placement,
+empty-state wrapping, the clear button's hit area, VoiceOver order, and truncation of
+the longer German and French strings are source readings on this host, because there
+is no macOS here. The gate proves it compiles and the suites pass; only a human
+looking at the window proves it looks right.
