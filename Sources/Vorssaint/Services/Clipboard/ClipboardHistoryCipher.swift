@@ -46,6 +46,14 @@ enum ClipboardHistoryCipher {
     /// input.
     static func seal(_ data: Data) -> Data? {
         guard let key = self.key() else { return nil }
+        return seal(data, using: key)
+    }
+
+    /// Encrypts under a key the caller holds. The keychain is not reachable
+    /// from every process that runs these types (an ssh-launched test process
+    /// gets `errSecInteractionNotAllowed`), so the round trip is proven through
+    /// this overload rather than left to the application path alone.
+    static func seal(_ data: Data, using key: SymmetricKey) -> Data? {
         guard let box = try? AES.GCM.seal(data, using: key),
               let combined = box.combined
         else { return nil }
@@ -55,8 +63,14 @@ enum ClipboardHistoryCipher {
     /// Decrypts a sealed blob, or nil. An unsealed blob is nil here so a
     /// caller cannot mistake a pass-through for a successful decryption.
     static func open(_ data: Data) -> Data? {
-        guard ClipboardHistoryEnvelope.isSealed(data) else { return nil }
-        guard let key = key(),
+        guard ClipboardHistoryEnvelope.isSealed(data), let key = key() else { return nil }
+        return open(data, using: key)
+    }
+
+    /// Decrypts under a key the caller holds. Framing is checked here, not in
+    /// the caller, so an unsealed blob stays nil under any key.
+    static func open(_ data: Data, using key: SymmetricKey) -> Data? {
+        guard ClipboardHistoryEnvelope.isSealed(data),
               let payload = ClipboardHistoryEnvelope.payload(from: data),
               let box = try? AES.GCM.SealedBox(combined: payload)
         else { return nil }

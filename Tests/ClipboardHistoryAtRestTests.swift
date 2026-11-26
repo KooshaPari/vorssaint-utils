@@ -2,15 +2,19 @@
 // Copyright (C) 2026 Vorssaint
 
 import Foundation
+#if canImport(CryptoKit)
+import CryptoKit
+#endif
 
 /// Guards the clipboard history's at-rest layer.
 ///
 /// Deliberately does not put anything in the keychain. A test that created a
 /// real keychain item would make the macOS gate depend on login-session state
-/// and could stop on a keychain prompt nobody is there to answer, so what runs
-/// on macOS is the framing plus the source rules that keep the plaintext paths
-/// closed. The cipher's own behaviour is checked in the framing tests wherever
-/// it exists, and it is absent on Linux by design.
+/// and could stop on a keychain prompt nobody is there to answer. The seal is
+/// therefore proven under a key generated in-process, which is the same
+/// AES-GCM call the application makes once the keychain answers, and the
+/// keychain-dependent branch is only asserted for its rule: a seal that fails
+/// writes nothing in cleartext.
 enum ClipboardHistoryAtRestTests {
     static func run(_ suite: TestSuite) {
         suite.run("clipboard-at-rest-envelope") {
@@ -69,6 +73,32 @@ enum ClipboardHistoryAtRestTests {
             let corrupted = ClipboardHistoryEnvelope.frame(combined: Data(repeating: 7, count: 40))
             suite.expect(corrupted.flatMap { ClipboardHistoryCipher.open($0) } == nil,
                          "a sealed blob that does not open is nil, not garbage")
+
+            // The keychain is not reachable from this process, so the probe
+            // below takes its failure branch. The round trip itself is proven
+            // under a key held here, which is the same AES-GCM call the
+            // application makes once the keychain answers.
+            #if canImport(CryptoKit)
+            let localKey = SymmetricKey(size: .bits256)
+            if let held = ClipboardHistoryCipher.seal(plaintext, using: localKey) {
+                suite.expect(ClipboardHistoryEnvelope.isSealed(held),
+                             "a blob sealed under a held key carries the frame")
+                suite.expect(ClipboardHistoryCipher.open(held, using: localKey) == plaintext,
+                             "the round trip returns the original bytes")
+                suite.expect(ClipboardHistoryCipher.seal(plaintext, using: localKey) != held,
+                             "a second seal under the same key differs")
+                let otherKey = SymmetricKey(size: .bits256)
+                suite.expect(ClipboardHistoryCipher.open(held, using: otherKey) == nil,
+                             "another key does not open it")
+                // A flipped byte is a tag failure, not garbage output.
+                var flipped = held
+                flipped[flipped.count - 1] ^= 0x01
+                suite.expect(ClipboardHistoryCipher.open(flipped, using: localKey) == nil,
+                             "a tampered tag is refused")
+            } else {
+                suite.expect(false, "AES-GCM under a held key seals")
+            }
+            #endif
 
             // Sealing needs the login keychain, which a test process may not
             // have. Both worlds are asserted, because the rule that matters is
