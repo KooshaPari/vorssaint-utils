@@ -22,6 +22,15 @@ struct WhatsNewStrings {
     let skipPreviewCheckbox: String
     let showPreviewToggle: String
     let showPreviewCaption: String
+    /// Placeholder of the window's search field.
+    let searchPlaceholder: String
+    /// Shown in the window when a search keeps nothing. The %@ is what the
+    /// person typed, quoted the way the language quotes.
+    let searchNoMatchFormat: String
+    /// The moment a feature became new. The %@ is that moment already written
+    /// for this language, such as "26 Nov 2026 at 10:57", so this string only
+    /// has to say what the moment means.
+    let newAsOfFormat: String
 }
 
 extension FeatureStrings {
@@ -40,7 +49,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Choose a feature to see what changed in it.",
                 skipPreviewCheckbox: "Don’t show what’s new before updating",
                 showPreviewToggle: "Show what’s new before updating",
-                showPreviewCaption: "What changed in your features still appears after each update.")
+                showPreviewCaption: "What changed in your features still appears after each update.",
+                searchPlaceholder: "Search features",
+                searchNoMatchFormat: "Nothing matches “%@”",
+                newAsOfFormat: "New as of %@")
         case .ptBR:
             return WhatsNewStrings(
                 updatedFromFormat: "Atualizado da versão %@",
@@ -54,7 +66,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Escolha um recurso para ver o que mudou nele.",
                 skipPreviewCheckbox: "Não mostrar novidades antes de atualizar",
                 showPreviewToggle: "Mostrar novidades antes de atualizar",
-                showPreviewCaption: "O que mudou nos seus recursos continua aparecendo após cada atualização.")
+                showPreviewCaption: "O que mudou nos seus recursos continua aparecendo após cada atualização.",
+                searchPlaceholder: "Buscar recursos",
+                searchNoMatchFormat: "Nada corresponde a “%@”",
+                newAsOfFormat: "Novidade desde %@")
         case .tr:
             return WhatsNewStrings(
                 updatedFromFormat: "%@ sürümünden güncellendi",
@@ -68,7 +83,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Neyin değiştiğini görmek için bir özellik seçin.",
                 skipPreviewCheckbox: "Güncellemeden önce yenilikleri gösterme",
                 showPreviewToggle: "Güncellemeden önce yenilikleri göster",
-                showPreviewCaption: "Özelliklerinizdeki değişiklikler her güncellemeden sonra yine gösterilir.")
+                showPreviewCaption: "Özelliklerinizdeki değişiklikler her güncellemeden sonra yine gösterilir.",
+                searchPlaceholder: "Özelliklerde ara",
+                searchNoMatchFormat: "“%@” ile eşleşen yok",
+                newAsOfFormat: "%@ tarihinden beri yeni")
         case .ru:
             return WhatsNewStrings(
                 updatedFromFormat: "Обновлено с версии %@",
@@ -82,7 +100,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Выберите функцию, чтобы увидеть, что в ней изменилось.",
                 skipPreviewCheckbox: "Не показывать изменения перед обновлением",
                 showPreviewToggle: "Показывать изменения перед обновлением",
-                showPreviewCaption: "Изменения в ваших функциях по-прежнему показываются после каждого обновления.")
+                showPreviewCaption: "Изменения в ваших функциях по-прежнему показываются после каждого обновления.",
+                searchPlaceholder: "Поиск функций",
+                searchNoMatchFormat: "Ничего не совпадает с «%@»",
+                newAsOfFormat: "Новое с %@")
         case .es:
             return WhatsNewStrings(
                 updatedFromFormat: "Actualizado desde la versión %@",
@@ -96,7 +117,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Elige una función para ver sus cambios.",
                 skipPreviewCheckbox: "No mostrar novedades antes de actualizar",
                 showPreviewToggle: "Mostrar novedades antes de actualizar",
-                showPreviewCaption: "Los cambios en tus funciones seguirán apareciendo después de cada actualización.")
+                showPreviewCaption: "Los cambios en tus funciones seguirán apareciendo después de cada actualización.",
+                searchPlaceholder: "Buscar funciones",
+                searchNoMatchFormat: "Nada coincide con «%@»",
+                newAsOfFormat: "Novedad desde %@")
         case .sk:
             return WhatsNewStrings(
                 updatedFromFormat: "Aktualizované z verzie %@",
@@ -110,7 +134,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Vyberte funkciu a pozrite si, čo sa v nej zmenilo.",
                 skipPreviewCheckbox: "Nezobrazovať novinky pred aktualizáciou",
                 showPreviewToggle: "Zobrazovať novinky pred aktualizáciou",
-                showPreviewCaption: "Zmeny vo vašich funkciách sa budú naďalej zobrazovať po každej aktualizácii.")
+                showPreviewCaption: "Zmeny vo vašich funkciách sa budú naďalej zobrazovať po každej aktualizácii.",
+                searchPlaceholder: "Hľadať funkcie",
+                searchNoMatchFormat: "Nič nezodpovedá „%@“",
+                newAsOfFormat: "Nové od %@")
         case .de:
             return WhatsNewStrings(
                 updatedFromFormat: "Aktualisiert von Version %@",
@@ -124,7 +151,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Wähle eine Funktion, um zu sehen, was sich geändert hat.",
                 skipPreviewCheckbox: "Neuigkeiten vor dem Update nicht anzeigen",
                 showPreviewToggle: "Neuigkeiten vor dem Update anzeigen",
-                showPreviewCaption: "Was sich in deinen Funktionen geändert hat, siehst du weiterhin nach jedem Update.")
+                showPreviewCaption: "Was sich in deinen Funktionen geändert hat, siehst du weiterhin nach jedem Update.",
+                searchPlaceholder: "Funktionen durchsuchen",
+                searchNoMatchFormat: "Nichts entspricht „%@“",
+                newAsOfFormat: "Neu seit %@")
         case .fr:
             return WhatsNewStrings(
                 updatedFromFormat: "Mis à jour depuis la version %@",
@@ -138,7 +168,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Choisissez une fonction pour voir ce qui a changé.",
                 skipPreviewCheckbox: "Masquer les nouveautés avant la mise à jour",
                 showPreviewToggle: "Afficher les nouveautés avant la mise à jour",
-                showPreviewCaption: "Ce qui a changé dans vos fonctions s’affiche toujours après chaque mise à jour.")
+                showPreviewCaption: "Ce qui a changé dans vos fonctions s’affiche toujours après chaque mise à jour.",
+                searchPlaceholder: "Rechercher des fonctions",
+                searchNoMatchFormat: "Rien ne correspond à « %@ »",
+                newAsOfFormat: "Nouveau depuis le %@")
         case .it:
             return WhatsNewStrings(
                 updatedFromFormat: "Aggiornato dalla versione %@",
@@ -152,7 +185,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Scegli una funzione per vedere cosa è cambiato.",
                 skipPreviewCheckbox: "Non mostrare le novità prima di aggiornare",
                 showPreviewToggle: "Mostra le novità prima di aggiornare",
-                showPreviewCaption: "Le modifiche alle tue funzioni continuano ad apparire dopo ogni aggiornamento.")
+                showPreviewCaption: "Le modifiche alle tue funzioni continuano ad apparire dopo ogni aggiornamento.",
+                searchPlaceholder: "Cerca funzioni",
+                searchNoMatchFormat: "Nessun risultato per «%@»",
+                newAsOfFormat: "Novità dal %@")
         case .ja:
             return WhatsNewStrings(
                 updatedFromFormat: "バージョン%@からアップデート",
@@ -166,7 +202,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "機能を選択すると、変更内容が表示されます。",
                 skipPreviewCheckbox: "アップデート前に新機能を表示しない",
                 showPreviewToggle: "アップデート前に新機能を表示",
-                showPreviewCaption: "インストール済みの機能の変更内容は、アップデートのたびに引き続き表示されます。")
+                showPreviewCaption: "インストール済みの機能の変更内容は、アップデートのたびに引き続き表示されます。",
+                searchPlaceholder: "機能を検索",
+                searchNoMatchFormat: "「%@」に一致するものはありません",
+                newAsOfFormat: "%@ から新しく追加")
         case .ko:
             return WhatsNewStrings(
                 updatedFromFormat: "버전 %@에서 업데이트됨",
@@ -180,7 +219,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "기능을 선택하면 변경된 내용을 볼 수 있습니다.",
                 skipPreviewCheckbox: "업데이트 전에 새로운 기능 보지 않기",
                 showPreviewToggle: "업데이트 전에 새로운 기능 보기",
-                showPreviewCaption: "업데이트할 때마다 설치된 기능의 변경 사항은 계속 표시됩니다.")
+                showPreviewCaption: "업데이트할 때마다 설치된 기능의 변경 사항은 계속 표시됩니다.",
+                searchPlaceholder: "기능 검색",
+                searchNoMatchFormat: "“%@”과 일치하는 항목이 없습니다",
+                newAsOfFormat: "%@부터 새로 추가됨")
         case .uk:
             return WhatsNewStrings(
                 updatedFromFormat: "Оновлено з версії %@",
@@ -194,7 +236,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "Виберіть функцію, щоб побачити, що в ній змінилося.",
                 skipPreviewCheckbox: "Не показувати зміни перед оновленням",
                 showPreviewToggle: "Показувати зміни перед оновленням",
-                showPreviewCaption: "Зміни у ваших функціях і далі показуватимуться після кожного оновлення.")
+                showPreviewCaption: "Зміни у ваших функціях і далі показуватимуться після кожного оновлення.",
+                searchPlaceholder: "Пошук функцій",
+                searchNoMatchFormat: "Нічого не збігається з «%@»",
+                newAsOfFormat: "Нове з %@")
         case .zhHans:
             return WhatsNewStrings(
                 updatedFromFormat: "已从版本 %@ 更新",
@@ -208,7 +253,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "选择一个功能以查看其中的变化。",
                 skipPreviewCheckbox: "更新前不显示新功能",
                 showPreviewToggle: "更新前显示新功能",
-                showPreviewCaption: "每次更新后仍会显示已安装功能的变化。")
+                showPreviewCaption: "每次更新后仍会显示已安装功能的变化。",
+                searchPlaceholder: "搜索功能",
+                searchNoMatchFormat: "没有与“%@”匹配的内容",
+                newAsOfFormat: "新增于 %@")
         case .zhTW, .zhHK:
             return WhatsNewStrings(
                 updatedFromFormat: "已從版本 %@ 更新",
@@ -222,7 +270,10 @@ extension FeatureStrings {
                 chooseFeatureHint: "選擇一個功能以查看其中的變化。",
                 skipPreviewCheckbox: "更新前不顯示新功能",
                 showPreviewToggle: "更新前顯示新功能",
-                showPreviewCaption: "每次更新後仍會顯示已安裝功能的變化。")
+                showPreviewCaption: "每次更新後仍會顯示已安裝功能的變化。",
+                searchPlaceholder: "搜尋功能",
+                searchNoMatchFormat: "沒有與「%@」相符的內容",
+                newAsOfFormat: "新增於 %@")
         }
     }
 }
