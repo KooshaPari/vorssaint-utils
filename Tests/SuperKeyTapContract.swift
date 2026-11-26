@@ -137,6 +137,28 @@ enum SuperKeyTapContract {
             keyboard.deviceWrites.append(keyboard.lockOn)
             return true
         }
+        /// Present, so production's single route to the private interface keeps
+        /// compiling here verbatim. Each call lands on the recording fakes above,
+        /// so the counters still see exactly what production asked for.
+        final class HIDEventSystemShim {
+            static let shared = HIDEventSystemShim()
+            var isAvailable: Bool { true }
+            func makeClient() -> EventSystemClient? {
+                IOHIDEventSystemClientCreateSimpleClient(nil)
+            }
+            func services(of client: EventSystemClient) -> [Keyboard]? {
+                IOHIDEventSystemClientCopyServices(client) as? [Keyboard]
+            }
+            func conformsTo(_ keyboard: Keyboard, page: UInt32, usage: UInt32) -> Bool? {
+                IOHIDServiceClientConformsTo(keyboard, page, usage) != 0
+            }
+            func property(_ keyboard: Keyboard, _ key: CFString) -> Any? {
+                IOHIDServiceClientCopyProperty(keyboard, key)
+            }
+            func setProperty(_ keyboard: Keyboard, _ key: CFString, _ value: CFBoolean) -> Bool? {
+                IOHIDServiceClientSetProperty(keyboard, key, value)
+            }
+        }
         func capsLockIsOn() -> Bool? { lockReadable ? keyboards.contains { $0.lockOn } : nil }
         @discardableResult func setCapsLock(_ on: Bool) -> Bool {
             guard lockWritable else { return false }
