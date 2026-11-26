@@ -213,7 +213,7 @@ batched `./build.sh --test` run per branch on `kooshas-laptop`.
 | `dev/e1-tailnet` | 123873 checks PASS | `26a9d8dd` |
 | `dev/e2-mullvad` | 123881 checks PASS | `a3cd7f2c` |
 | `dev/g-flux-warmth` | 123868 checks PASS | `41baa8cc` |
-| `dev/g-smb-mesh` | **tested, not green** — 4 checks failed in the merged tree | `ca5edd58` |
+| `dev/g-smb-mesh` | **124233 checks PASS** at `2152cf7a` (verified) | `ca5edd58` |
 
 - Four merged worktrees (`vorssaint-utils-{e1,e2,flux,mesh}`) were removed after
   the merge, so no lane is left on disk unmerged.
@@ -245,5 +245,19 @@ batched `./build.sh --test` run per branch on `kooshas-laptop`.
   `import AppKit` fails. nixOS is a git and coordination node, plus the
   Foundation-only subset check above; the Mac is the only release build and
   verify target.
+- **Re-verified on the Mac at `2152cf7a`, and green.**
+  `./build.sh --test` on `dev/maccy-clipboard-parity` reported
+  `TESTS OK (124233 checks)`, then `PREFERENCE CLEANUP TESTS OK`,
+  `UNINSTALL SPACES TESTS OK` and `DEVELOPER INSTALL ISOLATION TESTS OK`,
+  exit 0, 285 s. The count is one above the 124232 that failed, which is
+  exactly the added positive `[]` -> `.available(applied: 0)` ComputeMesh case.
+  All four failures of `179`/`325`/`86`/`92` are gone.
+- The attempt before that was **not a test run at all**: `build.sh` accepts
+  `--test`, so a bare `test` was ignored, `TEST` stayed 0, and the script fell
+  through to the full build and died in Developer ID signing
+  (`com.vorssaint.utils.fan-control: errSecInternalComponent`, retried 3/3).
+  Signing cannot gate verification: the `--test` branch compiles `Tests/*.swift`
+  and `exit`s at `build.sh:660`, before any bundle signing. `errSecInternalComponent`
+  is confined to full and `--install` builds, i.e. the F1 notarization domain.
 - Two new lanes opened from `ca5edd58`: `dev/knu-review` (K1-K4 above) and
   `dev/clip-placement` (A9 above).

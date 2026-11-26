@@ -35,8 +35,13 @@ SUBSET OK (79 checks) — not the release gate
 
 Rules that keep this honest:
 
-- It is **not** the release gate. Only `./build.sh test` on macOS compiles every
+- It is **not** the release gate. Only `./build.sh --test` on macOS compiles every
   suite; a green subset means the listed suites are green and nothing else.
+  The flag takes **two hyphens**: a bare `test` is ignored, `TEST` stays 0, the
+  script falls through to a full build and dies in Developer ID signing. That
+  mistake cost one Mac round trip and produced no test result at all.
+- Confirmed on the Mac: the merged tree at `2152cf7a` returns
+  `TESTS OK (124233 checks)` plus the three shell suites, exit 0.
 - A suite qualifies only when its production files and the test itself import
   nothing Darwin-only. `import Security` disqualifies a file, which is why the
   secret store's Keychain half is excluded and its in-memory half is extracted
