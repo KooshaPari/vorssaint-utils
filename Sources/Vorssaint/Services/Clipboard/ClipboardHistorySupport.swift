@@ -168,7 +168,10 @@ enum ClipboardHistoryWindowPlacement {
         let origin = clamped(origin: NSPoint(x: visibleFrame.midX - size.width / 2,
                                              y: visibleFrame.minY + shelfInset),
                              size: size, visibleFrame: visibleFrame)
-        return NSRect(x: origin.x, y: visibleFrame.minY + shelfInset, size: size)
+        return NSRect(x: origin.x,
+                      y: visibleFrame.minY + shelfInset,
+                      width: size.width,
+                      height: size.height)
     }
 
     /// Centred under the menu bar, and never above it on a short display.
