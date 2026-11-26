@@ -98,6 +98,7 @@ struct MetricsTests {
                 UpdateHighlightsTests.run(suite)
                 UpdateIntroFlowTests.run(suite)
                 ReleaseDigestTests.run(suite)
+                NewFeatureBadgesTests.run(suite)
             }),
             ("repository", { RepositoryFeatureTests.run(suite) }),
             ("screenshots", {

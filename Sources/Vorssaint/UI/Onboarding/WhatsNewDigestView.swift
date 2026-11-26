@@ -74,14 +74,16 @@ struct WhatsNewDigestView: View {
         List(selection: $selection) {
             versionRow
                 .tag(Selection.overview)
-            if !sections.newFeatures.isEmpty {
-                Section(text.newFeatures) {
-                    ForEach(sections.newFeatures) { sidebarRow($0, installed: true) }
-                }
-            }
             if !sections.yourFeatures.isEmpty {
                 Section(text.yourFeatures) {
-                    ForEach(sections.yourFeatures) { sidebarRow($0, installed: true) }
+                    ForEach(sections.yourFeatures) { row in
+                        sidebarRow(row, installed: true)
+                        // What this build adds reads under the row it belongs
+                        // to, rather than in a group of its own.
+                        ForEach(row.children) { child in
+                            sidebarRow(child, installed: true, nested: true)
+                        }
+                    }
                 }
             }
             if !sections.notInstalled.isEmpty {
@@ -115,9 +117,11 @@ struct WhatsNewDigestView: View {
         .padding(.vertical, 3)
     }
 
-    private func sidebarRow(_ row: WhatsNewRow, installed: Bool) -> some View {
+    private func sidebarRow(_ row: WhatsNewRow, installed: Bool, nested: Bool = false) -> some View {
         let isSelected = selection == .row(row.id)
         let isUnread = unread.contains(row.id)
+        let spoken = [row.isNew ? text.newFeatures : nil, isUnread ? text.updated : nil]
+            .compactMap { $0 }
         return HStack(spacing: 9) {
             Image(systemName: row.icon)
                 .foregroundStyle(isSelected ? AnyShapeStyle(.primary)
@@ -125,6 +129,9 @@ struct WhatsNewDigestView: View {
                 .frame(width: 18)
             Text(title(of: row))
                 .foregroundStyle(installed || isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            if row.isNew {
+                KnuTag()
+            }
             Spacer(minLength: 4)
             if isUnread {
                 Circle()
@@ -133,8 +140,10 @@ struct WhatsNewDigestView: View {
                     .accessibilityHidden(true)
             }
         }
+        // Indented under its parent row, the way a Settings sub-page reads.
+        .padding(.leading, nested ? 18 : 0)
         .accessibilityElement(children: .combine)
-        .accessibilityValue(isUnread ? text.updated : "")
+        .accessibilityValue(spoken.joined(separator: ", "))
         .tag(Selection.row(row.id))
         .help(title(of: row))
     }
@@ -143,7 +152,7 @@ struct WhatsNewDigestView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if case .row(let id) = selection, let row = sections.rows.first(where: { $0.id == id }) {
+        if case .row(let id) = selection, let row = sections.allRows.first(where: { $0.id == id }) {
             WhatsNewFeaturePage(row: row, title: title(of: row), onOpenSettings: onOpenSettings)
                 .id(row.id)
         } else {
@@ -263,6 +272,17 @@ private struct WhatsNewFeaturePage: View {
                 Section(WhatsNewDigestView.title(of: group.kind, text)) {
                     ForEach(group.changes, id: \.self) { change in
                         changeRow(change)
+                    }
+                }
+            }
+            // A row that took in a new feature reads it here too, so opening
+            // the parent row never lands on a page with nothing on it.
+            ForEach(row.children.filter { !$0.changes.isEmpty }) { child in
+                Section(child.title) {
+                    ForEach(WhatsNewSupport.grouped(child.changes)) { group in
+                        ForEach(group.changes, id: \.self) { change in
+                            changeRow(change)
+                        }
                     }
                 }
             }

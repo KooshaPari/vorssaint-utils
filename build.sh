@@ -446,6 +446,7 @@ if (( TEST )); then
         Sources/Vorssaint/Core/WhatsAppOrganizerStrings.swift
         Sources/Vorssaint/Core/ReleaseNotes.swift
         Sources/Vorssaint/Core/ReleaseDigest.swift
+        Sources/Vorssaint/Core/NewFeatureBadges.swift
         Sources/Vorssaint/Core/ReleaseChangeAliases.swift
         Sources/Vorssaint/Core/WhatsNewStrings.swift
         Sources/Vorssaint/Core/URLCleaning.swift

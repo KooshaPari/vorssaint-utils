@@ -22,7 +22,13 @@ struct WhatsNewRow: Identifiable, Equatable {
     /// Dynamic Island row stands for the island, not for its extensions.
     let feature: AppFeature?
     let destination: FeatureSettingsDestination?
-    let changes: [ReleaseChange]
+    var changes: [ReleaseChange]
+    /// True for a row announcing something this build added: the view tags it
+    /// with `KnuTag` so it reads as new beside its parent row.
+    var isNew = false
+    /// New features shown under this row, in catalog order. The same rows also
+    /// stay in `WhatsNewSections.newFeatures`, flat, for the overview counts.
+    var children: [WhatsNewRow] = []
 
     var isNewFeature: Bool {
         if case .newFeature = id { return true }
@@ -32,11 +38,17 @@ struct WhatsNewRow: Identifiable, Equatable {
 
 /// The window's sidebar, laid out like the Settings sidebar it mirrors.
 struct WhatsNewSections: Equatable {
+    /// Every new feature, flat, in catalog order, whether or not a Settings
+    /// row took it in. The overview counts read this list.
     var newFeatures: [WhatsNewRow] = []
     var yourFeatures: [WhatsNewRow] = []
     var notInstalled: [WhatsNewRow] = []
 
     var rows: [WhatsNewRow] { newFeatures + yourFeatures + notInstalled }
+
+    /// Every row the sidebar shows, the ones nested under a parent included,
+    /// so a selected row can be found and read on a page of its own.
+    var allRows: [WhatsNewRow] { rows + rows.flatMap(\.children) }
 
     /// Changes that concern this person, once each, for the overview counts.
     var changesForYou: Set<ReleaseChange> {
@@ -53,8 +65,10 @@ enum WhatsNewSupport {
     /// Settings order, with app-wide changes last. Features left out of the
     /// Mac's install are listed one by one, since each installs on its own;
     /// a Dynamic Island extension does nothing without the island, so it
-    /// counts as installed only beside it. New features come first and
-    /// appear nowhere else.
+    /// counts as installed only beside it. A new feature nests under the row
+    /// it belongs to, so it reads beside the settings that already exist
+    /// instead of in a group of its own; one with no Settings row keeps a row
+    /// of its own, in the catalog order.
     static func sections(digest: ReleaseDigest,
                          newFeatures: [AppFeature],
                          sidebarItems: [SettingsSidebarItem],
@@ -85,28 +99,54 @@ enum WhatsNewSupport {
         }
 
         var sections = WhatsNewSections()
-        sections.newFeatures = newFeatures.map { feature in
+        let newRows = newFeatures.map { feature in
             WhatsNewRow(id: .newFeature(feature), title: title(feature), icon: feature.symbolName,
                         feature: feature, destination: navigableDestination(of: feature),
-                        changes: digest.changes.filter { $0.features.contains(feature) })
+                        changes: digest.changes.filter { $0.features.contains(feature) },
+                        isNew: true)
+        }
+        sections.newFeatures = newRows
+        // Where each new feature reads: under its Settings row when Settings
+        // has one, otherwise on a row of its own. A row cannot hold itself, so
+        // the feature's own row counts as having none.
+        var nested: [WhatsNewRow.ID: [WhatsNewRow]] = [:]
+        var standalone: [AppFeature: WhatsNewRow] = [:]
+        for row in newRows {
+            guard let feature = row.feature else { continue }
+            let parent = rowID(for: feature, in: sidebarItems)
+            if case .feature = parent {
+                standalone[feature] = row
+            } else {
+                nested[parent, default: []].append(row)
+            }
         }
         for item in sidebarItems {
-            guard let changes = installedChanges[.settings(item.id)] else { continue }
+            let children = nested[.settings(item.id)] ?? []
+            let changes = ownChanges(installedChanges[.settings(item.id)] ?? [], children: children)
+            guard !changes.isEmpty || !children.isEmpty else { continue }
             let feature = representedFeature(of: item.id)
             sections.yourFeatures.append(WhatsNewRow(
                 id: .settings(item.id), title: item.title, icon: item.icon, feature: feature,
-                destination: item.destination, changes: changes))
+                destination: item.destination, changes: changes, children: children))
         }
         for feature in AppFeature.allCases {
-            guard let changes = installedChanges[.feature(feature)] else { continue }
-            sections.yourFeatures.append(WhatsNewRow(
-                id: .feature(feature), title: title(feature), icon: feature.symbolName, feature: feature,
-                destination: navigableDestination(of: feature), changes: changes))
+            if var row = standalone[feature] {
+                // A feature that is both new and changed keeps one row, marked
+                // new, rather than arriving twice.
+                if let changes = installedChanges[.feature(feature)] { row.changes = changes }
+                sections.yourFeatures.append(row)
+            } else if let changes = installedChanges[.feature(feature)] {
+                sections.yourFeatures.append(WhatsNewRow(
+                    id: .feature(feature), title: title(feature), icon: feature.symbolName, feature: feature,
+                    destination: navigableDestination(of: feature), changes: changes))
+            }
         }
-        if let changes = installedChanges[.general] {
+        let generalChanges = ownChanges(installedChanges[.general] ?? [], children: nested[.general] ?? [])
+        let generalChildren = nested[.general] ?? []
+        if !generalChanges.isEmpty || !generalChildren.isEmpty {
             sections.yourFeatures.append(WhatsNewRow(
                 id: .general, title: generalTitle, icon: "gearshape", feature: nil,
-                destination: nil, changes: changes))
+                destination: nil, changes: generalChanges, children: generalChildren))
         }
         sections.notInstalled = AppFeature.allCases.compactMap { feature in
             missingChanges[feature].map {
@@ -115,6 +155,25 @@ enum WhatsNewSupport {
             }
         }
         return sections
+    }
+
+    /// The changes a parent row reads itself: everything filed under it except
+    /// the lines a nested new feature already shows on the same page, so one
+    /// line is not printed twice.
+    private static func ownChanges(_ changes: [ReleaseChange], children: [WhatsNewRow]) -> [ReleaseChange] {
+        let shown = Set(children.compactMap(\.feature))
+        guard !shown.isEmpty else { return changes }
+        return changes.filter { shown.isDisjoint(with: $0.features) }
+    }
+
+    /// Every feature the window reads as new: the features this update added,
+    /// plus the ones this build tagged as having gained something
+    /// (`NewFeatureBadges.tagged`), in catalog order and without repeats. An
+    /// unsupported feature is not announced, matching the added list.
+    static func newFeatures(added: [AppFeature], tagged: Set<AppFeature>,
+                            isSupported: (AppFeature) -> Bool) -> [AppFeature] {
+        let announced = Set(added).union(tagged)
+        return AppFeature.allCases.filter { announced.contains($0) && isSupported($0) }
     }
 
     /// The Settings sidebar row an installed feature belongs to. Dynamic
@@ -135,7 +194,7 @@ enum WhatsNewSupport {
     /// rows were built with, so a language change mid-window relabels them.
     static func titles(of rows: [WhatsNewRow], sidebarItems: [SettingsSidebarItem],
                        title: (AppFeature) -> String, generalTitle: String) -> [WhatsNewRow.ID: String] {
-        Dictionary(rows.map { row -> (WhatsNewRow.ID, String) in
+        Dictionary((rows + rows.flatMap(\.children)).map { row -> (WhatsNewRow.ID, String) in
             switch row.id {
             case .settings(let item):
                 return (row.id, sidebarItems.first { $0.id == item }?.title ?? row.title)

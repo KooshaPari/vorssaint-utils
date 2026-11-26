@@ -2411,8 +2411,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         let hub = FeatureStrings.hub(language)
         let sections = WhatsNewSupport.sections(
             digest: digest,
-            newFeatures: WhatsNewInfo.newFeatures(
-                known: defaults.string(forKey: DefaultsKey.whatsNewKnownFeatures),
+            newFeatures: WhatsNewSupport.newFeatures(
+                added: WhatsNewInfo.newFeatures(
+                    known: defaults.string(forKey: DefaultsKey.whatsNewKnownFeatures),
+                    isSupported: { $0.isHardwareSupported }),
+                tagged: NewFeatureBadges.tagged,
                 isSupported: { $0.isHardwareSupported }),
             sidebarItems: SettingsDirectory.sidebarItems(strings, language: language,
                                                          isAvailable: { $0.isAvailable }),
