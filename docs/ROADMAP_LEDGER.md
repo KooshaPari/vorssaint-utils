@@ -931,3 +931,15 @@ everything else keeps working" only after P86-2's `dlopen` shim lands.
 P86-2's shim was scoped rather than smuggled in: six functions and two opaque types are actually
 used, everything else is public IOKit, so it is a shim plus a call-site rewrite with no Mac-free
 behavioural verification available. Next leaf.
+
+### P86-1 first half shipped: the bridge now says why it failed
+
+`c87a2213`. `NowPlayingBridgeFailure` plus a de-duplicating reporter, wired into both bridges; the
+radial path no longer collapses a timeout, a non-zero exit and an unreadable reply into the same
+`completion(nil)`. `Tests/NowPlayingBridgeTests.swift` = 14 behavioural checks on the reporter and 9
+source checks on the call sites; the call-site group is RED against the pre-fix tree (9 of 111
+checks failing) and GREEN after (111 of 111), so the check is not vacuous.
+
+What this does **not** do: a user who is not reading Console.app still sees an empty card. The UI half
+(notch empty state + wheel card + a `docs/TROUBLESHOOTING.md` filter line) is the next leaf, and P86-1
+stays open until it lands.

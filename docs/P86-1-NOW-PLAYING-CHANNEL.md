@@ -113,3 +113,29 @@ A is testable in the existing suites without a Mac, because the failure mapping 
 `Tests/NotchMusicHardeningTests.swift` and `Tests/NowPlayingOpenContract.swift` already exist, and
 `RadialNowPlayingSupport` (the reply/snapshot parsing) is Foundation-only. B needs a real Mac to
 observe a TCC prompt and a scripting dictionary; nothing in the Linux subset can stand in for it.
+
+## Option A, first half, shipped (`c87a2213`)
+
+The failure half of A is now code, not a proposal. `Services/Notch/NowPlayingBridgeFailure.swift`
+names the four ways the bridge can produce nothing — a missing bundled script or library, a non-zero
+`perl` exit, an expired reply deadline, an unreadable reply — and
+`NowPlayingBridgeFailureReporter` writes one line per change of class, stays quiet on repeats, and
+re-arms after a readable reply so a channel that breaks twice is not silent the second time. "Nothing
+is playing" is deliberately not a case: it is the normal state and giving it one would put it in the
+log.
+
+Both bridges report. The radial bridge now distinguishes a timeout from a non-zero exit from an
+unreadable reply instead of collapsing all three into `completion(nil)`
+(`RadialNowPlayingService.swift:363-395`), and the notch reports a missing adapter before
+`connectionEnded()` (`NotchMusicService.swift:95-112`). Lines go to `Logger` at error level with
+`privacy: .public`, so Console.app shows the reason without a debugger.
+
+`Tests/NowPlayingBridgeTests.swift` proves it: 14 checks run the reporter for real (first-class write,
+silent repeat, class change, post-success re-arm, distinct summaries, no normal-state case) and 9
+checks read both call sites, which are the ones that fail against the pre-fix tree.
+
+**Still open in A:** the notch and the wheel still show nothing to a user who is not reading
+Console.app. The remaining half is a UI surface: the notch's now-playing empty state and the wheel's
+card should say playback is unavailable when `lastReportedFailure != nil`, and
+`docs/TROUBLESHOOTING.md` should gain the Console.app filter (`category:now-playing`). That is the
+next leaf, and it is why this item stays open rather than closed.
