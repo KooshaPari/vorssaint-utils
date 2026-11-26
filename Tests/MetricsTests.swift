@@ -161,6 +161,10 @@ struct MetricsTests {
                 QuitAppsRuntimeTests.run(suite)
                 PortManagerRefreshTests.run(suite)
             }),
+            ("mesh", {
+                SMBSharesTests.run(suite)
+                ComputeMeshTests.run(suite)
+            }),
             ("settings", {
                 SettingsFeatureTests.run(suite)
                 SettingsSearchCoverageTests.run(suite)

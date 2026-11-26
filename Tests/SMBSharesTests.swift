@@ -1,0 +1,334 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
+import Foundation
+
+/// Runs the production share service against an in-memory config, mount table,
+/// tool set and keychain. No share is mounted, no tool is launched and no
+/// password is stored anywhere real.
+enum SMBSharesTests {
+    static let configPath = "/tmp/vorssaint-smb-shares.json"
+    static let mediaID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+    static let archiveID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+
+    final class Projection: SMBKeychainProjection {
+        var published: [UUID: String] = [:]
+        var publishCount = 0
+        var withdrawCount = 0
+        var accepts = true
+
+        func publish(_ secret: String, for share: SMBShare) -> Bool {
+            publishCount += 1
+            guard accepts else { return false }
+            published[share.id] = secret
+            return true
+        }
+
+        func withdraw(for share: SMBShare) {
+            withdrawCount += 1
+            published[share.id] = nil
+        }
+    }
+
+    final class Runtime {
+        var files: [String: String?] = [:]
+        var tools: Set<String> = [SMBShareSupport.mountToolPath,
+                                  SMBShareSupport.mountTableToolPath,
+                                  SMBShareSupport.unmountToolPath]
+        var responses: [String: (status: Int32, output: String)] = [:]
+        var commands: [(path: String, arguments: [String], timeout: TimeInterval)] = []
+        var createsDirectory = true
+        var createdDirectories: [String] = []
+
+        func environment() -> SMBEnvironment {
+            let runtime = self
+            return SMBEnvironment(
+                run: { path, arguments, timeout in
+                    runtime.commands.append((path, arguments, timeout))
+                    return runtime.responses[path] ?? (0, "")
+                },
+                fileExists: { runtime.files[$0] != nil || runtime.tools.contains($0) },
+                readText: { runtime.files[$0] ?? nil },
+                createDirectory: { path in
+                    runtime.createdDirectories.append(path)
+                    return runtime.createsDirectory
+                }
+            )
+        }
+
+        func respond(_ path: String, _ status: Int32, _ output: String) {
+            responses[path] = (status, output)
+        }
+    }
+
+    static func configuration(_ shares: [(id: UUID, server: String, share: String,
+                                          mountPoint: String, name: String?,
+                                          username: String?, domain: String?)]) -> String {
+        let entries = shares.map { share -> String in
+            var fields: [String] = []
+            fields.append("\"id\": \"\(share.id.uuidString)\"")
+            fields.append("\"server\": \"\(share.server)\"")
+            fields.append("\"share\": \"\(share.share)\"")
+            fields.append("\"mountPoint\": \"\(share.mountPoint)\"")
+            if let name = share.name { fields.append("\"name\": \"\(name)\"") }
+            if let username = share.username { fields.append("\"username\": \"\(username)\"") }
+            if let domain = share.domain { fields.append("\"domain\": \"\(domain)\"") }
+            return "{ \(fields.joined(separator: ", ")) }"
+        }
+        return "{ \"shares\": [ \(entries.joined(separator: ", ")) ] }"
+    }
+
+    static let mediaConfiguration = configuration([
+        (mediaID, "nas.local", "media", "/Volumes/media", "Media", "koosh", nil),
+    ])
+
+    static func makeService(_ runtime: Runtime,
+                            config: String? = mediaConfiguration,
+                            secrets: InMemoryAgentSecretStore = InMemoryAgentSecretStore(),
+                            projection: Projection = Projection()) -> SMBSharesService {
+        if let config { runtime.files[configPath] = config }
+        return SMBSharesService(configurationURL: URL(fileURLWithPath: configPath),
+                                secrets: secrets,
+                                projection: projection,
+                                environment: runtime.environment())
+    }
+
+    static func run(_ suite: TestSuite) {
+        suite.run("smb-configuration") {
+            suite.expect(SMBShareSupport.decodeConfiguration(nil) == .absent,
+                         "a missing configuration file is absent, not malformed")
+            suite.expect(SMBShareSupport.decodeConfiguration("{\"shares\":[]}") == .shares([]),
+                         "an explicitly empty configuration decodes to no shares")
+            suite.expect(SMBShareSupport.decodeConfiguration("not json") == .invalid,
+                         "unreadable configuration is rejected as a whole")
+
+            let duplicateIdentifier = configuration([
+                (mediaID, "nas.local", "media", "/Volumes/media", nil, nil, nil),
+                (mediaID, "nas.local", "photos", "/Volumes/photos", nil, nil, nil),
+            ])
+            suite.expect(SMBShareSupport.decodeConfiguration(duplicateIdentifier) == .invalid,
+                         "one identifier cannot address two shares")
+
+            let duplicateEndpoint = configuration([
+                (mediaID, "nas.local", "media", "/Volumes/media", nil, nil, nil),
+                (archiveID, "NAS.local", "MEDIA", "/Volumes/other", nil, nil, nil),
+            ])
+            suite.expect(SMBShareSupport.decodeConfiguration(duplicateEndpoint) == .invalid,
+                         "one endpoint cannot own two mount points")
+
+            let badServer = configuration([
+                (mediaID, "nas/local", "media", "/Volumes/media", nil, nil, nil),
+            ])
+            suite.expect(SMBShareSupport.decodeConfiguration(badServer) == .invalid,
+                         "a server that would change the mount source is rejected")
+
+            let defaults = configuration([
+                (mediaID, "nas.local", "media", "/Volumes/media", nil, "", ""),
+            ])
+            if case .shares(let shares) = SMBShareSupport.decodeConfiguration(defaults) {
+                suite.expect(shares.count == 1 && shares[0].name == "media"
+                             && shares[0].username == nil && shares[0].domain == nil,
+                             "a blank name and account fields fall back without becoming errors")
+            } else {
+                suite.expect(false, "a valid configuration must decode")
+            }
+
+            let runtime = Runtime()
+            let service = makeService(runtime, config: "{\"shares\":[]}")
+            suite.expect(service.reload() == .available([]),
+                         "no configured shares is an available empty list")
+            suite.expect(runtime.commands.isEmpty,
+                         "an empty configuration launches no tool at all")
+            let absent = Runtime()
+            let absentService = makeService(absent, config: nil)
+            suite.expect(absentService.reload() == .available([]),
+                         "a missing configuration file is not a backend failure")
+            absentService.storeCredential("secret", for: mediaID)
+            suite.expect(absentService.mount(shareID: mediaID) == .unknownShare,
+                         "a share that is not configured cannot be mounted")
+        }
+
+        suite.run("smb-listing") {
+            let runtime = Runtime()
+            let service = makeService(runtime)
+            let listing = service.reload()
+            suite.expect(listing.rows.count == 1
+                         && listing.rows[0].mountState == .unmounted
+                         && listing.rows[0].credential == .missing,
+                         "a configured share with no mount and no password states both plainly")
+            let table = runtime.commands.first { $0.path == SMBShareSupport.mountTableToolPath }
+            suite.expect(table?.timeout == SMBShareSupport.tableTimeout
+                         && (table?.timeout ?? 0) > 0,
+                         "the mount table is read under the bounded timeout")
+
+            runtime.files["/Volumes/media"] = ""
+            service.storeCredential("correct horse", for: mediaID)
+            suite.expect(service.reload().rows.first?.credential == .stored,
+                         "a stored password is reported as stored without being read back")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, 0, """
+                /dev/disk3s1 on / (apfs, sealed, local, read-only, journaled)
+                //koosh@nas.local/media on /Volumes/media (smbfs, nodev, nosuid, mounted by koosh)
+                """)
+            let mounted = service.reload()
+            suite.expect(mounted.rows.first?.mountState == .mounted("/Volumes/media"),
+                         "the kernel's own mount table supplies the mounted state")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, 0,
+                            "//koosh@other.local/media on /Volumes/media (smbfs, nodev)")
+            suite.expect(service.reload().rows.first?.mountState == .unmounted,
+                         "a different server with the same share name is not this share's mount")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, 0,
+                            "//koosh@nas.local/media on /Volumes/disks/media (smbfs, nodev)")
+            suite.expect(service.reload().rows.first?.mountState == .mounted("/Volumes/disks/media"),
+                         "a share mounted elsewhere reports the path the kernel used")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, 0,
+                            "//koosh@nas.local/media broken (smbfs, nodev)")
+            let malformed = service.reload()
+            suite.expect(malformed == .unavailable(.mountTableMalformed) && malformed.rows.isEmpty,
+                         "a malformed smb row fails the read instead of inventing states")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, 0, "")
+            suite.expect(service.reload() == .available([
+                SMBShareRow(share: mediaShare(),
+                            credential: .stored,
+                            mountState: .unmounted)]),
+                         "an empty table is a genuine unmounted answer")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, -1, "")
+            suite.expect(service.reload() == .unavailable(.mountTableUnavailable),
+                         "a timed-out table is unavailable, never empty")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, 0, "")
+            runtime.tools.remove(SMBShareSupport.mountToolPath)
+            suite.expect(service.reload() == .unavailable(.mountToolMissing),
+                         "without mount_smbfs the share list is unavailable, not unmounted")
+        }
+
+        suite.run("smb-mount") {
+            let secrets = InMemoryAgentSecretStore()
+            let projection = Projection()
+            let runtime = Runtime()
+            let service = makeService(runtime, secrets: secrets, projection: projection)
+            suite.expect(service.mount(shareID: mediaID) == .failed(.credentialMissing),
+                         "a mount without a password is a named credential state")
+            suite.expect(runtime.commands.isEmpty && projection.publishCount == 0,
+                         "a missing password never reaches a tool or the keychain projection")
+
+            suite.expect(service.storeCredential("hunter2", for: mediaID),
+                         "the password is accepted by the shared keychain store")
+            runtime.respond(SMBShareSupport.mountToolPath, 0, "")
+            let outcome = service.mount(shareID: mediaID)
+            suite.expect(outcome == .mounted("/Volumes/media"),
+                         "a successful mount reports the configured mount point")
+            let invocation = runtime.commands.first { $0.path == SMBShareSupport.mountToolPath }
+            suite.expect(invocation?.arguments == ["-N", "//koosh@nas.local/media", "/Volumes/media"],
+                         "the tool receives a password-free source and the mount point")
+            suite.expect(invocation?.timeout == SMBShareSupport.mountTimeout,
+                         "the mount runs under the bounded timeout")
+            suite.expect(projection.publishCount == 1 && projection.withdrawCount == 1,
+                         "the projection holds the password only for the call")
+            suite.expect(projection.published.isEmpty,
+                         "the projected keychain item is withdrawn afterwards")
+            suite.expect(!(invocation?.arguments ?? []).joined().contains("hunter2"),
+                         "the password never appears in an argument list")
+            suite.expect(runtime.createdDirectories == ["/Volumes/media"],
+                         "the mount point is created before the mount is attempted")
+
+            runtime.respond(SMBShareSupport.mountToolPath, 1,
+                            "mount_smbfs: server connection failed: Permission denied")
+            suite.expect(service.mount(shareID: mediaID) == .failed(.credentialRejected),
+                         "a rejected password is reported as rejected, without tool text")
+            suite.expect(projection.withdrawCount == 2,
+                         "the projection is withdrawn on a rejected mount too")
+
+            runtime.respond(SMBShareSupport.mountToolPath, 1, "mount_smbfs: File exists")
+            suite.expect(service.mount(shareID: mediaID) == .failed(.mountPointBusy),
+                         "an already-used mount point has its own named failure")
+
+            runtime.respond(SMBShareSupport.mountToolPath, 1, "mount_smbfs: odd internal error")
+            suite.expect(service.mount(shareID: mediaID) == .failed(.commandFailed(1)),
+                         "an unclassified failure keeps only its status")
+
+            runtime.respond(SMBShareSupport.mountToolPath, -1, "")
+            suite.expect(service.mount(shareID: mediaID) == .failed(.timeout),
+                         "a mount that outlives its bound reports a timeout")
+
+            runtime.respond(SMBShareSupport.mountToolPath, 0, "")
+            projection.accepts = false
+            suite.expect(service.mount(shareID: mediaID) == .failed(.credentialPublishFailed),
+                         "a keychain that refuses the password stops before any tool runs")
+
+            projection.accepts = true
+            runtime.createsDirectory = false
+            suite.expect(service.mount(shareID: mediaID) == .failed(.mountPointUnavailable),
+                         "a mount point that cannot be created is its own failure")
+
+            runtime.createsDirectory = true
+            let domainConfiguration = configuration([
+                (mediaID, "nas.local", "media", "/Volumes/media", nil, "koosh", "WORKGROUP"),
+            ])
+            let domainRuntime = Runtime()
+            let domainSecrets = InMemoryAgentSecretStore()
+            let domainService = makeService(domainRuntime, config: domainConfiguration,
+                                            secrets: domainSecrets)
+            domainSecrets.set("hunter2", for: mediaID)
+            domainService.mount(shareID: mediaID)
+            let domainInvocation = domainRuntime.commands
+                .first { $0.path == SMBShareSupport.mountToolPath }
+            suite.expect(domainInvocation?.arguments[1] == "//WORKGROUP;koosh@nas.local/media",
+                         "a domain and account are carried in the documented source form")
+
+            let missingToolRuntime = Runtime()
+            missingToolRuntime.tools.remove(SMBShareSupport.mountToolPath)
+            let missingToolSecrets = InMemoryAgentSecretStore()
+            let missingToolService = makeService(missingToolRuntime, secrets: missingToolSecrets)
+            _ = missingToolSecrets.set("hunter2", for: mediaID)
+            suite.expect(missingToolService.mount(shareID: mediaID) == .unavailable(.mountToolMissing),
+                         "a mount without the tool is unavailable rather than failed")
+
+            suite.expect(service.mount(shareID: archiveID) == .unknownShare,
+                         "mounting an unconfigured identifier changes nothing")
+            suite.expect(!service.storeCredential("", for: archiveID),
+                         "an empty password is not stored")
+        }
+
+        suite.run("smb-unmount") {
+            let runtime = Runtime()
+            let service = makeService(runtime)
+            suite.expect(service.unmount(shareID: mediaID) == .notMounted,
+                         "unmounting a share the kernel does not list is a named not-mounted state")
+            suite.expect(!runtime.commands.contains { $0.path == SMBShareSupport.unmountToolPath },
+                         "no unmount command runs for a share that is not mounted")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, 0,
+                            "//koosh@nas.local/media on /Volumes/media (smbfs, nodev)")
+            runtime.respond(SMBShareSupport.unmountToolPath, 0, "")
+            suite.expect(service.unmount(shareID: mediaID) == .unmounted,
+                         "a mounted share unmounts")
+            let invocation = runtime.commands.first { $0.path == SMBShareSupport.unmountToolPath }
+            suite.expect(invocation?.arguments == ["/Volumes/media"]
+                         && invocation?.timeout == SMBShareSupport.unmountTimeout,
+                         "the unmount targets the reported path under the bounded timeout")
+
+            runtime.respond(SMBShareSupport.unmountToolPath, -1, "")
+            suite.expect(service.unmount(shareID: mediaID) == .failed(.timeout),
+                         "an unmount that outlives its bound reports a timeout")
+
+            runtime.respond(SMBShareSupport.mountTableToolPath, 0,
+                            "//koosh@nas.local/media broken (smbfs)")
+            suite.expect(service.unmount(shareID: mediaID) == .unavailable(.mountTableMalformed),
+                         "an unreadable table leaves the unmount unperformed and unavailable")
+
+            suite.expect(service.unmount(shareID: archiveID) == .unknownShare,
+                         "unmounting an unconfigured identifier changes nothing")
+        }
+    }
+
+    static func mediaShare() -> SMBShare {
+        SMBShare(id: mediaID, name: "Media", server: "nas.local", share: "media",
+                 mountPoint: "/Volumes/media", username: "koosh", domain: nil)
+    }
+}
