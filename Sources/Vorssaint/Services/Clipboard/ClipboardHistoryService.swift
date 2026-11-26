@@ -1624,9 +1624,10 @@ final class ClipboardHistoryService: ObservableObject {
         UserDefaults.standard.set(Double(panel.frame.minY), forKey: DefaultsKey.clipboardHistoryWindowY)
     }
 
-    /// Placed again on every open, so a changed display never strands it.
-    /// Cards make a shelf along the bottom of the screen the pointer is on.
-    /// The list keeps its chosen location when that display is still usable.
+    /// Placed again on every open, so a changed display or a placement chosen
+    /// in Settings never strands it. Cards make a shelf along the bottom of the
+    /// screen the pointer is on; the list opens where the chosen placement
+    /// says, which by default is the location it was left in.
     private func position(_ panel: NSPanel) {
         adjustingPanelFrame = true
         defer { adjustingPanelFrame = false }
@@ -1634,30 +1635,29 @@ final class ClipboardHistoryService: ObservableObject {
         switch quickLayout {
         case .cards:
             panel.styleMask.remove(.resizable)
-            panel.setFrame(NSRect(x: screen.minX + 16, y: screen.minY + 8,
-                                  width: screen.width - 32, height: min(318, screen.height - 16)),
+            panel.setFrame(ClipboardHistoryWindowPlacement.shelfFrame(visibleFrame: screen),
                            display: true,
                            animate: false)
         case .list:
             panel.styleMask.insert(.resizable)
             let defaults = UserDefaults.standard
+            let placement = ClipboardSurfacePlacement.current(in: defaults)
+            var rememberedOrigin: NSPoint?
             if defaults.object(forKey: DefaultsKey.clipboardHistoryWindowX) != nil,
-               defaults.object(forKey: DefaultsKey.clipboardHistoryWindowY) != nil,
-               let restored = ClipboardHistoryWindowPlacement.restoredFrame(
-                   origin: NSPoint(x: defaults.double(forKey: DefaultsKey.clipboardHistoryWindowX),
-                                   y: defaults.double(forKey: DefaultsKey.clipboardHistoryWindowY)),
-                   visibleFrames: NSScreen.screens.map(\.visibleFrame),
-                   size: preferredPanelSize(visibleFrame:)) {
-                panel.setFrame(restored, display: true, animate: false)
-                return
+               defaults.object(forKey: DefaultsKey.clipboardHistoryWindowY) != nil {
+                rememberedOrigin = NSPoint(x: defaults.double(forKey: DefaultsKey.clipboardHistoryWindowX),
+                                           y: defaults.double(forKey: DefaultsKey.clipboardHistoryWindowY))
             }
-            let size = preferredPanelSize(visibleFrame: screen)
-            let x = screen.midX - size.width / 2
-            let y = min(screen.maxY - size.height - 54, screen.midY - size.height / 2)
-            panel.setFrame(NSRect(x: max(screen.minX + 16, min(x, screen.maxX - size.width - 16)),
-                                  y: max(screen.minY + 16, y),
-                                  width: size.width,
-                                  height: size.height),
+            // Only the pointer placement reads the pointer, so every other
+            // opening leaves the mouse state alone.
+            let cursor = placement == .nearCursor ? NSEvent.mouseLocation : NSPoint.zero
+            panel.setFrame(ClipboardHistoryWindowPlacement.frame(
+                for: placement,
+                visibleFrame: screen,
+                visibleFrames: NSScreen.screens.map(\.visibleFrame),
+                cursor: cursor,
+                rememberedOrigin: rememberedOrigin,
+                size: preferredPanelSize(visibleFrame:)),
                            display: true,
                            animate: false)
         }

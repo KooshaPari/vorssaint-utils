@@ -63,7 +63,41 @@ enum ClipboardHistoryWindowSizing {
     }
 }
 
+/// Where the clipboard surface opens. Until this was a choice the window
+/// remembered the place it was left in and the island's own switch could take
+/// the clipboard instead, so `remembered` keeps both of those and every other
+/// value places the window deliberately.
+enum ClipboardSurfacePlacement: String, CaseIterable {
+    case nearCursor
+    case remembered
+    case bottomOfScreen
+    case topCenter
+    case dynamicIsland
+
+    /// What an installation reads until the user picks another placement.
+    static let fallback = ClipboardSurfacePlacement.remembered
+
+    /// A value this version does not know, such as one from a newer version,
+    /// reads as the fallback in the same way the layout does.
+    static func current(in defaults: UserDefaults = .standard) -> ClipboardSurfacePlacement {
+        defaults.string(forKey: DefaultsKey.clipboardHistoryPlacement)
+            .flatMap(Self.init(rawValue:)) ?? fallback
+    }
+}
+
 enum ClipboardHistoryWindowPlacement {
+    /// Space kept between a placed window and the display edges it is kept
+    /// inside.
+    static let margin: CGFloat = 16
+    /// The shelf has always sat closer to the bottom edge than the window
+    /// margins around it.
+    static let shelfInset: CGFloat = 8
+    static let shelfHeight: CGFloat = 318
+    /// How far below the menu bar the default position sits.
+    static let menuBarInset: CGFloat = 54
+    /// Space left between the pointer and a window that opens beside it.
+    static let cursorGap: CGFloat = 12
+
     static func restoredFrame(origin: NSPoint, visibleFrames: [NSRect],
                               size: (NSRect) -> NSSize) -> NSRect? {
         guard origin.x.isFinite, origin.y.isFinite else { return nil }
@@ -80,6 +114,87 @@ enum ClipboardHistoryWindowPlacement {
                               width: frame.width, height: frame.height)
         }
         return restored
+    }
+
+    /// The frame the window opens with. Every placement is decided here, so a
+    /// display, a pointer or a remembered position can be fed in without a
+    /// window.
+    static func frame(for placement: ClipboardSurfacePlacement, visibleFrame: NSRect,
+                      visibleFrames: [NSRect], cursor: NSPoint, rememberedOrigin: NSPoint?,
+                      size: (NSRect) -> NSSize) -> NSRect {
+        switch placement {
+        case .remembered, .dynamicIsland:
+            // The island shows the clipboard on its own surface. Whenever the
+            // window is used instead, its last position stands, which is what
+            // both values did before the choice existed.
+            if let rememberedOrigin,
+               let restored = restoredFrame(origin: rememberedOrigin,
+                                            visibleFrames: visibleFrames, size: size) {
+                return restored
+            }
+            return topCenterFrame(size: size(visibleFrame), visibleFrame: visibleFrame)
+        case .nearCursor:
+            return nearCursorFrame(cursor: cursor, size: size(visibleFrame),
+                                   visibleFrames: visibleFrames, fallback: visibleFrame)
+        case .bottomOfScreen:
+            return bottomFrame(size: size(visibleFrame), visibleFrame: visibleFrame)
+        case .topCenter:
+            return topCenterFrame(size: size(visibleFrame), visibleFrame: visibleFrame)
+        }
+    }
+
+    /// Keeps a window inside one display, with the same gap the resize handle
+    /// has always used.
+    static func clamped(origin: NSPoint, size: NSSize, visibleFrame: NSRect) -> NSPoint {
+        NSPoint(x: max(visibleFrame.minX + margin,
+                       min(origin.x, visibleFrame.maxX - size.width - margin)),
+                y: max(visibleFrame.minY + margin,
+                       min(origin.y, visibleFrame.maxY - size.height - margin)))
+    }
+
+    /// The shelf of cards: the full width of the display inside the margins,
+    /// along its bottom edge.
+    static func shelfFrame(visibleFrame: NSRect) -> NSRect {
+        NSRect(x: visibleFrame.minX + margin,
+               y: visibleFrame.minY + shelfInset,
+               width: max(1, visibleFrame.width - margin * 2),
+               height: max(1, min(shelfHeight, visibleFrame.height - shelfInset * 2)))
+    }
+
+    /// A window of its own size centred along the bottom edge of the display,
+    /// at the same height as the shelf of cards. Only the width can need
+    /// keeping inside the display, so the height is not moved off the inset.
+    static func bottomFrame(size: NSSize, visibleFrame: NSRect) -> NSRect {
+        let origin = clamped(origin: NSPoint(x: visibleFrame.midX - size.width / 2,
+                                             y: visibleFrame.minY + shelfInset),
+                             size: size, visibleFrame: visibleFrame)
+        return NSRect(x: origin.x, y: visibleFrame.minY + shelfInset, size: size)
+    }
+
+    /// Centred under the menu bar, and never above it on a short display.
+    static func topCenterFrame(size: NSSize, visibleFrame: NSRect) -> NSRect {
+        let origin = NSPoint(x: visibleFrame.midX - size.width / 2,
+                             y: min(visibleFrame.maxY - size.height - menuBarInset,
+                                    visibleFrame.midY - size.height / 2))
+        return NSRect(origin: clamped(origin: origin, size: size, visibleFrame: visibleFrame),
+                      size: size)
+    }
+
+    /// Beside the pointer, opening away from the display edge it would fall
+    /// off. The window belongs to the display the pointer is on, which is the
+    /// one `visibleFrames` says holds it.
+    static func nearCursorFrame(cursor: NSPoint, size: NSSize, visibleFrames: [NSRect],
+                                fallback: NSRect) -> NSRect {
+        let visible = visibleFrames.first { NSMouseInRect(cursor, $0, false) } ?? fallback
+        var origin = NSPoint(x: cursor.x + cursorGap, y: cursor.y - size.height - cursorGap)
+        if origin.x + size.width > visible.maxX - margin {
+            origin.x = cursor.x - size.width - cursorGap
+        }
+        if origin.y < visible.minY + margin {
+            origin.y = cursor.y + cursorGap
+        }
+        return NSRect(origin: clamped(origin: origin, size: size, visibleFrame: visible),
+                      size: size)
     }
 }
 
