@@ -10,11 +10,13 @@ enum ReleaseChangeKind: Int, CaseIterable, Comparable {
 
     static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 
-    /// nil leaves the section out: the summary and credits, and sections that
-    /// only restate notes found elsewhere ("Everything from 3.3.3", "Details").
+    /// nil leaves the section out: the summary and credits, sections that
+    /// only restate notes found elsewhere ("Everything from 3.3.3", "Details"),
+    /// and the "What's KNU" review list, whose entries the window gets from
+    /// `NewFeatureBadges` instead.
     init?(section title: String) {
         let name = title.trimmingCharacters(in: .whitespaces).lowercased()
-        if ["summary", "contributors", "docs", "details", "website", "links"].contains(name)
+        if ["summary", "contributors", "docs", "details", "website", "links", "what's knu"].contains(name)
             || name.hasPrefix("everything from") {
             return nil
         }

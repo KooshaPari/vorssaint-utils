@@ -120,7 +120,9 @@ enum SettingsSearchSupport {
 
     /// Every feature contributes a localized label and exact Settings
     /// destination. Clipboard History uses its section name so it stays
-    /// distinguishable from the containing Clipboard page.
+    /// distinguishable from the containing Clipboard page. A feature tagged as
+    /// new in this build answers to the build marker too, so searching "KNU"
+    /// or "new" lists what just arrived.
     static func featureItems(language: AppLanguage,
                              title: (AppFeature) -> String) -> [SettingsSearchItem] {
         AppFeature.allCases.map { feature in
@@ -130,6 +132,7 @@ enum SettingsSearchSupport {
                                    ? FeatureStrings.commandBar(language).sourceClipboard
                                    : title(feature),
                                icon: feature.symbolName,
+                               keywords: NewFeatureBadges.isNew(feature) ? ["KNU", "new"] : [],
                                feature: feature)
         }
     }
@@ -170,6 +173,9 @@ enum SettingsSearchSupport {
             }) else { return pageItem }
             var merged = pageItem
             merged.feature = match.feature
+            // The page keeps the feature row's own keywords, so a build marker
+            // such as "KNU" still finds a feature whose page it now owns.
+            merged.terms = match.terms.filter { $0.feature == nil } + merged.terms
             return merged
         }
         let dedupedFeatureItems = featureItems.filter { featureItem in

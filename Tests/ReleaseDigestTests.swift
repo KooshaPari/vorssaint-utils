@@ -54,7 +54,7 @@ enum ReleaseDigestTests {
             ("Feature highlights", .new), ("Changed", .changed), ("Performance", .changed),
             ("Removed", .changed), ("Dynamic Island", .changed), ("Migration", .changed),
             ("Fixed", .fixed), ("Hotfix", .fixed), ("Safety and reliability", .fixed),
-            ("Summary", nil), ("Contributors", nil), ("Docs", nil), ("Details", nil),
+            ("Summary", nil), ("What's KNU", nil), ("Contributors", nil), ("Docs", nil), ("Details", nil),
             ("Everything from 3.3.3", nil), ("Website", nil),
         ]
         for (title, kind) in expected {
@@ -300,8 +300,22 @@ enum ReleaseDigestTests {
                      "new features come first with the entries that name them")
         suite.expect(sections.yourFeatures.map(\.id) == [.settings(.page(.notch)), .settings(.page(.monitor)),
                                                          .settings(.feature(.switcher)),
-                                                         .feature(.diskImageInstaller), .general],
-                     "installed features follow the Settings order, app-wide changes last")
+                                                         .feature(.diskImageInstaller), .newFeature(.portManager),
+                                                         .general],
+                     "a new feature with no Settings row keeps one, after the installed features")
+        let nested = WhatsNewSupport.sections(
+            digest: digest, newFeatures: [.portManager],
+            sidebarItems: items + [item(.page(.portManager), "Port manager")],
+            isAvailable: { installed.contains($0) }, title: { $0.rawValue }, generalTitle: "General")
+        suite.expect(nested.yourFeatures.contains { row in
+            row.id == .settings(.page(.portManager))
+                && row.children.map(\.id) == [.newFeature(.portManager)]
+                && row.children.first?.isNew == true
+        }, "a new feature nests under its Settings row and is marked new")
+        suite.expect(nested.newFeatures.map(\.id) == [.newFeature(.portManager)],
+                     "the overview still counts a nested new feature")
+        suite.expect(!nested.yourFeatures.contains { $0.id == .newFeature(.portManager) },
+                     "a nested new feature is not also listed on its own")
         suite.expect(sections.yourFeatures.first?.changes == [lyrics, island],
                      "Dynamic Island's row gathers its installed extensions")
         suite.expect(sections.yourFeatures.first { $0.id == .settings(.feature(.switcher)) }?.changes == [switcher, ports],
