@@ -22,8 +22,26 @@ UI marks anything changed in the current build with a green `KNU` tag.
 | A6 | Clear all including pinned, with its own confirmation | shipped |
 | A7 | Clipboard check interval preference | shipped |
 | A8 | Universal Clipboard skip as a first-class switch | shipped |
+| A9 | Clipboard surface placement as a chosen option: near the cursor, remembered popup, bottom of the screen, top centre, or the Dynamic Island — instead of only drag-and-remember | wip (`dev/clip-placement`) |
 
 Reference: `docs/CLIPBOARD_MACCY_PARITY.md`.
+
+## A2. The `KNU` tag (operator intent, 2026-11-26)
+
+The green `KNU` pill marks anything that changed in the current build. The
+operator's requirement, verbatim: "KNU should be searcahble or have a dedicated
+page + whats knu section in changelog i can clearly review to see wahts new for
+a user as of xyz date/time", and earlier "shown under their parent item (e.g.
+parent sidebar item)".
+
+| # | Item | Status |
+| --- | --- | --- |
+| K1 | A KNU/new feature renders under its parent Settings sidebar row in the What's New window, not in its own top-level group | wip (`dev/knu-review`) |
+| K2 | KNU entries are reachable from Settings search, or from a dedicated page | wip (`dev/knu-review`) |
+| K3 | `CHANGELOG.md` carries a `### What's KNU` subsection with the date and time each item became new, so "what is new for a user as of <date/time>" is reviewable | wip (`dev/knu-review`) |
+| K4 | A test fails if the What's KNU section and `NewFeatureBadges.tagged` disagree | wip (`dev/knu-review`) |
+
+Source of truth for "new in this build" is `Sources/Vorssaint/Core/NewFeatureBadges.swift`.
 
 ## B. Window policy engine (operator intent, 2026-11-20)
 
@@ -183,3 +201,27 @@ implementation, bundle it.
 
 Rule applied to every row: a bundle or sidecar wins wherever hand-rolling would be
 inferior; native implementation only where the sidecar would be worse.
+
+## Lane log (2026-11-26)
+
+Lane MacMgr. All git work ran on nixos; every macOS figure below came from one
+batched `./build.sh --test` run per branch on `kooshas-laptop`.
+
+| Branch | macOS result | Merged into `dev/maccy-clipboard-parity` |
+| --- | --- | --- |
+| baseline `dev/maccy-clipboard-parity` | 123918 checks PASS | — |
+| `dev/e1-tailnet` | 123873 checks PASS | `26a9d8dd` |
+| `dev/e2-mullvad` | 123881 checks PASS | `a3cd7f2c` |
+| `dev/g-flux-warmth` | 123868 checks PASS | `41baa8cc` |
+| `dev/g-smb-mesh` | build passed (no TESTS OK line captured) | `ca5edd58` |
+
+- Four merged worktrees (`vorssaint-utils-{e1,e2,flux,mesh}`) were removed after
+  the merge, so no lane is left on disk unmerged.
+- The merged tree was then re-run on the Mac and reported
+  `DEVELOPER INSTALL ISOLATION TESTS OK`.
+- `docs/NIXOS_READINESS.md` records why the app cannot be built here: SwiftPM
+  resolves to `x86_64-unknown-linux-gnu` and there is no Apple SDK, so
+  `import AppKit` fails. nixOS is a git and coordination node only; the Mac is
+  the only build and verify target.
+- Two new lanes opened from `ca5edd58`: `dev/knu-review` (K1-K4 above) and
+  `dev/clip-placement` (A9 above).
