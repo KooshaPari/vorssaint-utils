@@ -493,6 +493,7 @@ enum SettingsDirectory {
                                         (.clipboardHistory, [FeatureStrings.clipboard(language).limit,
                                                              FeatureStrings.clipboardRetention(language).title,
                                                              FeatureStrings.clipboard(language).historyLayout,
+                                                             FeatureStrings.clipboardPlacement(language).title,
                                                              FeatureStrings.clipboard(language).skipSensitive,
                                                              FeatureStrings.clipboard(language).pasteImageAsFile,
                                                              FeatureStrings.clipboard(language).autoClearEnable,

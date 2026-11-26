@@ -522,6 +522,7 @@ if (( TEST )); then
         Sources/Vorssaint/Core/HiddenPreferenceStrings.swift
         Sources/Vorssaint/Services/Clipboard/ClipboardIgnoredPasteboardTypes.swift
         Sources/Vorssaint/Core/ClipboardRetentionStrings.swift
+        Sources/Vorssaint/Core/ClipboardPlacementStrings.swift
         Sources/Vorssaint/Core/WindowLayoutIgnoredAppsStrings.swift
         Sources/Vorssaint/Services/WindowLayout/WindowLayoutIgnoredApps.swift
         Sources/Vorssaint/Core/WindowPreviewExclusionStrings.swift

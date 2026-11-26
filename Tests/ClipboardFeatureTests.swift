@@ -30,6 +30,11 @@ enum ClipboardFeatureTests {
             }
         }
         typealias NSScreen = Screen
+        /// The pointer the production placement reads, so a test decides where
+        /// the user is pointing instead of inheriting the machine's mouse.
+        enum NSEvent {
+            static var mouseLocation = CGPoint(x: 900, y: 700)
+        }
         enum UserDefaults {
             static let name = "com.vorssaint.tests.clipboard-panel"
             static let standard = Foundation.UserDefaults(suiteName: name)!
@@ -242,6 +247,190 @@ enum ClipboardFeatureTests {
         defaults.removeObject(forKey: DefaultsKey.clipboardHistoryWindowY)
         reopen()
         suite.expect(panel.frame == fallback, "a partially saved origin uses the default placement")
+    }
+
+    /// The placement chosen in Settings decides where the next opening lands,
+    /// the shelf keeps its own place, and an installation that never chose one
+    /// keeps the place it had.
+    private static func placementChoices(_ suite: TestSuite) {
+        _ = NSApplication.shared
+        let defaults = PanelPlacementHost.UserDefaults.standard
+        let screens = PanelPlacementHost.Screen.screens
+        defaults.removePersistentDomain(forName: PanelPlacementHost.UserDefaults.name)
+        defer {
+            defaults.removePersistentDomain(forName: PanelPlacementHost.UserDefaults.name)
+            PanelPlacementHost.Screen.screens = screens
+            PanelPlacementHost.NSEvent.mouseLocation = CGPoint(x: 900, y: 700)
+        }
+        let screen = PanelPlacementHost.Screen.pointerVisibleFrame
+        let size = NSSize(width: 560, height: 420)
+        func choose(_ placement: ClipboardSurfacePlacement) {
+            defaults.set(placement.rawValue, forKey: DefaultsKey.clipboardHistoryPlacement)
+        }
+        func forgetSavedOrigin() {
+            defaults.removeObject(forKey: DefaultsKey.clipboardHistoryWindowX)
+            defaults.removeObject(forKey: DefaultsKey.clipboardHistoryWindowY)
+        }
+
+        suite.expect(Defaults.registeredDefaults[DefaultsKey.clipboardHistoryPlacement] as? String
+                        == ClipboardSurfacePlacement.remembered.rawValue,
+               "the clipboard window keeps its remembered place until the user picks another placement")
+        suite.expect(ClipboardSurfacePlacement.allCases.map(\.rawValue)
+                        == ["nearCursor", "remembered", "bottomOfScreen", "topCenter", "dynamicIsland"],
+               "the placement values are stable, so a choice written by one version still reads here")
+        suite.expect(ClipboardSurfacePlacement.allCases.allSatisfy {
+                        ClipboardSurfacePlacement(rawValue: $0.rawValue) == $0
+                     },
+               "every placement round-trips through the value stored in Settings")
+        defaults.set("sideways", forKey: DefaultsKey.clipboardHistoryPlacement)
+        suite.expect(ClipboardSurfacePlacement.current(in: defaults) == .remembered,
+               "a placement this version does not know reads as the remembered place")
+        defaults.removeObject(forKey: DefaultsKey.clipboardHistoryPlacement)
+        suite.expect(ClipboardSurfacePlacement.current(in: defaults) == .remembered,
+               "an installation that never chose a placement opens where it always has")
+
+        let host = PanelPlacementHost()
+        host.quickLayout = .list
+        let panel = PanelPlacementHost.Panel(
+            contentRect: .zero,
+            styleMask: [.titled, .closable, .fullSizeContentView, .nonactivatingPanel],
+            backing: .buffered, defer: true)
+        let centredUnderMenuBar = NSRect(x: screen.midX - size.width / 2,
+                                         y: min(screen.maxY - size.height - 54,
+                                                screen.midY - size.height / 2),
+                                         width: size.width, height: size.height)
+        forgetSavedOrigin()
+        host.position(panel)
+        suite.expect(panel.frame == centredUnderMenuBar,
+               "with no placement written down the list opens where it always has: \(panel.frame)")
+        defaults.set(100.0, forKey: DefaultsKey.clipboardHistoryWindowX)
+        defaults.set(200.0, forKey: DefaultsKey.clipboardHistoryWindowY)
+        choose(.remembered)
+        host.position(panel)
+        suite.expect(panel.frame == NSRect(x: 100, y: 200, width: size.width, height: size.height),
+               "the remembered place wins over the fallback once the user has moved the window")
+        forgetSavedOrigin()
+        choose(.dynamicIsland)
+        host.position(panel)
+        suite.expect(panel.frame == centredUnderMenuBar,
+               "the island placement uses the same place when the window is the one that opens")
+        defaults.set(100.0, forKey: DefaultsKey.clipboardHistoryWindowX)
+        defaults.set(200.0, forKey: DefaultsKey.clipboardHistoryWindowY)
+        host.position(panel)
+        suite.expect(panel.frame == NSRect(x: 100, y: 200, width: size.width, height: size.height),
+               "the island placement keeps a moved window where it was left")
+
+        forgetSavedOrigin()
+        choose(.bottomOfScreen)
+        host.position(panel)
+        suite.expect(panel.frame == NSRect(x: screen.midX - size.width / 2,
+                                          y: screen.minY + 8,
+                                          width: size.width, height: size.height),
+               "the bottom placement sits at the shelf's height: \(panel.frame)")
+        choose(.topCenter)
+        host.position(panel)
+        suite.expect(panel.frame == centredUnderMenuBar,
+               "the top center placement opens under the menu bar of the pointer's display")
+
+        PanelPlacementHost.NSEvent.mouseLocation = CGPoint(x: 900, y: 700)
+        choose(.nearCursor)
+        host.position(panel)
+        suite.expect(panel.frame == NSRect(x: 912, y: 268, width: size.width, height: size.height),
+               "the pointer placement opens beside and below the pointer without covering it: \(panel.frame)")
+        PanelPlacementHost.NSEvent.mouseLocation = CGPoint(x: 1450, y: 700)
+        host.position(panel)
+        suite.expect(panel.frame == NSRect(x: 878, y: 268, width: size.width, height: size.height),
+               "a pointer against the right edge opens the window to its left instead of off the display")
+        PanelPlacementHost.NSEvent.mouseLocation = CGPoint(x: 900, y: 60)
+        host.position(panel)
+        suite.expect(panel.frame == NSRect(x: 912, y: 72, width: size.width, height: size.height),
+               "a pointer near the bottom edge opens the window above it instead of off the display")
+        PanelPlacementHost.NSEvent.mouseLocation = CGPoint(x: 5, y: 30)
+        host.position(panel)
+        suite.expect(screen.contains(panel.frame)
+                     && panel.frame.minX == 17 && panel.frame.minY == 42,
+               "a pointer in the corner still leaves the window fully on the display: \(panel.frame)")
+        let otherDisplay = NSRect(x: -1440, y: 0, width: 1440, height: 900)
+        PanelPlacementHost.Screen.screens = [.init(visibleFrame: screen),
+                                             .init(visibleFrame: otherDisplay)]
+        PanelPlacementHost.NSEvent.mouseLocation = CGPoint(x: -1000, y: 300)
+        host.position(panel)
+        suite.expect(panel.frame == NSRect(x: -988, y: 312, width: size.width, height: size.height),
+               "the pointer placement follows the pointer to the display it is on: \(panel.frame)")
+        let tinyDisplay = NSRect(x: 0, y: 0, width: 540, height: 320)
+        PanelPlacementHost.Screen.screens = [.init(visibleFrame: tinyDisplay)]
+        PanelPlacementHost.NSEvent.mouseLocation = CGPoint(x: 100, y: 100)
+        host.position(panel)
+        suite.expect(panel.frame.origin == NSPoint(x: 16, y: 16),
+               "a window larger than its display keeps its corner on the display rather than off it")
+
+        PanelPlacementHost.Screen.screens = screens
+        PanelPlacementHost.NSEvent.mouseLocation = CGPoint(x: 900, y: 700)
+        for placement in ClipboardSurfacePlacement.allCases {
+            choose(placement)
+            host.position(panel)
+            suite.expect(panel.frame.size == size && screen.contains(panel.frame),
+                   "\(placement.rawValue) opens a window of the chosen size inside the display")
+        }
+        choose(.nearCursor)
+        host.quickLayout = .cards
+        host.position(panel)
+        suite.expect(panel.frame == ClipboardHistoryWindowPlacement.shelfFrame(visibleFrame: screen),
+               "the shelf ignores the placement choice and keeps its own line along the bottom")
+        host.quickLayout = .list
+
+        // The island's clipboard page is a placement of its own, and the other
+        // placements take the clipboard out of the island entirely.
+        let islandDomain = "com.vorssaint.tests.clipboard-placement-island"
+        let island = UserDefaults(suiteName: islandDomain)!
+        defer { island.removePersistentDomain(forName: islandDomain) }
+        for (key, value) in Defaults.registeredDefaults { island.set(value, forKey: key) }
+        for (key, value) in AppFeature.availabilityDefaults { island.set(value, forKey: key) }
+        island.set(true, forKey: AppFeature.notch.availabilityKey)
+        island.set(true, forKey: DefaultsKey.notchEnabled)
+        island.set(true, forKey: DefaultsKey.clipboardHistoryEnabled)
+        suite.expect(NotchSupport.routesClipboardWindow(in: island),
+               "the remembered placement still opens the island a user turned on")
+        island.set(false, forKey: DefaultsKey.notchClipboardWindow)
+        suite.expect(!NotchSupport.routesClipboardWindow(in: island),
+               "a remembered place keeps using the window when the island's clipboard is off")
+        island.set(true, forKey: DefaultsKey.notchClipboardWindow)
+        for placement in [ClipboardSurfacePlacement.nearCursor, .bottomOfScreen, .topCenter] {
+            island.set(placement.rawValue, forKey: DefaultsKey.clipboardHistoryPlacement)
+            suite.expect(!NotchSupport.routesClipboardWindow(in: island),
+                   "\(placement.rawValue) always opens the window, even with the island's clipboard on")
+        }
+        island.set(ClipboardSurfacePlacement.dynamicIsland.rawValue,
+                   forKey: DefaultsKey.clipboardHistoryPlacement)
+        island.set(false, forKey: DefaultsKey.notchClipboardWindow)
+        suite.expect(NotchSupport.routesClipboardWindow(in: island),
+               "choosing the island opens its clipboard page without the older switch")
+        island.set(false, forKey: DefaultsKey.notchEnabled)
+        suite.expect(!NotchSupport.routesClipboardWindow(in: island),
+               "an island placement routes nowhere while the island itself is off")
+        suite.expect(SettingsBackupSupport.exportKeys().contains(DefaultsKey.clipboardHistoryPlacement),
+               "the placement travels with the settings backup")
+
+        for language in AppLanguage.allCases {
+            let strings = FeatureStrings.clipboardPlacement(language)
+            suite.expect(!strings.title.isEmpty
+                   && ClipboardSurfacePlacement.allCases.allSatisfy {
+                       !strings.label(for: $0).isEmpty && !strings.caption(for: $0).isEmpty
+                   },
+                   "\(language.rawValue) names and explains every placement")
+            guard language != .enUS else { continue }
+            let english = FeatureStrings.clipboardPlacement(.enUS)
+            suite.expect(strings.title != english.title
+                   && [ClipboardSurfacePlacement.nearCursor, .remembered,
+                       .bottomOfScreen, .topCenter].allSatisfy {
+                       strings.label(for: $0) != english.label(for: $0)
+                       && strings.caption(for: $0) != english.caption(for: $0)
+                   },
+                   "\(language.rawValue) translates the placement labels and their explanations")
+        }
+        suite.expect(FeatureStrings.clipboardPlacement(.enUS).label(for: .dynamicIsland)
+                        == FeatureStrings.clipboardPlacement(.ja).label(for: .dynamicIsland),
+               "the island keeps its product name in every language")
     }
 
     static func run(_ suite: TestSuite) {
@@ -1085,6 +1274,7 @@ enum ClipboardFeatureTests {
         suite.expect(placement.quickLayout == .cards, "an opening after choosing the cards shows the cards")
         placementDefaults.removePersistentDomain(forName: PanelPlacementHost.UserDefaults.name)
         panelGeometryPersistence(suite)
+        placementChoices(suite)
 
         // MARK: Clipboard history arrow keys
 

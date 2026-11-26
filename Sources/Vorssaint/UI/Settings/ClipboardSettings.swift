@@ -22,6 +22,8 @@ struct ClipboardSettings: View {
     @AppStorage(DefaultsKey.clipboardHistoryShortcutEnabled) private var shortcutEnabled = true
     @AppStorage(DefaultsKey.clipboardHistoryShowSourceAppIcons) private var showSourceAppIcons = false
     @AppStorage(DefaultsKey.clipboardHistoryLayout) private var historyLayout = ClipboardHistoryLayout.list
+    @AppStorage(DefaultsKey.clipboardHistoryPlacement)
+    private var historyPlacement = ClipboardSurfacePlacement.fallback
     @AppStorage(DefaultsKey.clipboardHistoryMenuBarPreview) private var menuBarPreview = false
     @AppStorage(DefaultsKey.clipboardHistoryMenuBarPreviewLength)
     private var menuBarPreviewLength = Defaults.defaultClipboardMenuBarPreviewLength
@@ -48,6 +50,10 @@ struct ClipboardSettings: View {
 
     private var skipExtras: ClipboardExtrasStrings {
         FeatureStrings.clipboardExtras(l10n.language)
+    }
+
+    private var placementText: ClipboardPlacementStrings {
+        FeatureStrings.clipboardPlacement(l10n.language)
     }
 
     /// Universal Clipboard is one entry in the ignored-types list, so the switch
@@ -258,6 +264,16 @@ struct ClipboardSettings: View {
                 Text(text.historyLayoutCards).tag(ClipboardHistoryLayout.cards)
             }
             .pickerStyle(.segmented)
+            Picker(placementText.title, selection: $historyPlacement) {
+                ForEach(ClipboardSurfacePlacement.allCases, id: \.self) { value in
+                    Text(placementText.label(for: value)).tag(value)
+                }
+            }
+            // The line describes the choice in hand, so it says what the next
+            // opening will do rather than listing every possibility.
+            Text(placementText.caption(for: historyPlacement))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Toggle(text.showSourceAppIconsInList, isOn: $showSourceAppIcons)
             Button {
                 ClipboardHistoryService.shared.showHistoryWindow()

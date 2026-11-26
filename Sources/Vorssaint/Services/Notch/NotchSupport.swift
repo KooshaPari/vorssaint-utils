@@ -2062,9 +2062,17 @@ enum NotchSupport {
         }
     }
 
+    /// Whether the island shows the clipboard instead of a window. A placement
+    /// that names where the window opens takes the clipboard out of the island,
+    /// which is the point of choosing one; the island's own switch decides
+    /// everywhere else, so nothing changes for anyone who never picks one.
     static func routesClipboardWindow(in defaults: UserDefaults = .standard) -> Bool {
-        isEnabled(in: defaults) && defaults.bool(forKey: DefaultsKey.notchClipboardWindow)
-            && modules(in: defaults).contains(.clipboard)
+        guard isEnabled(in: defaults), modules(in: defaults).contains(.clipboard) else { return false }
+        switch ClipboardSurfacePlacement.current(in: defaults) {
+        case .dynamicIsland: return true
+        case .remembered: return defaults.bool(forKey: DefaultsKey.notchClipboardWindow)
+        case .nearCursor, .bottomOfScreen, .topCenter: return false
+        }
     }
 
     /// Whether the island is on and shows its Files module, whichever window
