@@ -22,7 +22,7 @@ UI marks anything changed in the current build with a green `KNU` tag.
 | A6 | Clear all including pinned, with its own confirmation | shipped |
 | A7 | Clipboard check interval preference | shipped |
 | A8 | Universal Clipboard skip as a first-class switch | shipped |
-| A9 | Clipboard surface placement as a chosen option: near the cursor, remembered popup, bottom of the screen, top centre, or the Dynamic Island — instead of only drag-and-remember | wip (`dev/clip-placement`) |
+| A9 | Clipboard surface placement as a chosen option: near the cursor, remembered popup, bottom of the screen, top centre, or the Dynamic Island — instead of only drag-and-remember | shipped (124340 checks PASS at `0969068d`; two review follow-ups open: forced placement must not overwrite the remembered origin, and the cards layout must not offer an inert picker) |
 
 Reference: `docs/CLIPBOARD_MACCY_PARITY.md`.
 
@@ -214,6 +214,7 @@ batched `./build.sh --test` run per branch on `kooshas-laptop`.
 | `dev/e2-mullvad` | 123881 checks PASS | `a3cd7f2c` |
 | `dev/g-flux-warmth` | 123868 checks PASS | `41baa8cc` |
 | `dev/g-smb-mesh` | **124233 checks PASS** at `2152cf7a` (verified) | `ca5edd58` |
+| `dev/clip-placement` | **124340 checks PASS** at `0969068d` (verified) | `0969068d` |
 
 - Four merged worktrees (`vorssaint-utils-{e1,e2,flux,mesh}`) were removed after
   the merge, so no lane is left on disk unmerged.
@@ -261,3 +262,28 @@ batched `./build.sh --test` run per branch on `kooshas-laptop`.
   is confined to full and `--install` builds, i.e. the F1 notarization domain.
 - Two new lanes opened from `ca5edd58`: `dev/knu-review` (K1-K4 above) and
   `dev/clip-placement` (A9 above).
+- **`dev/clip-placement` (A9) merged and verified: `TESTS OK (124340 checks)` at
+  `0969068d`**, exit 0, 278 s, plus all three auxiliary suites. The count is 107
+  above 124233, which is the new `placementChoices` suite plus the registered-default
+  and 15-language assertions.
+- Its first macOS attempt did not compile, and this is the lesson worth keeping:
+  `ClipboardHistorySupport.swift:171` called `NSRect(x:y:size:)`, which does not
+  exist. The lane had no way to catch it - AppKit is macOS-only, and the Linux
+  parser run proves syntax, never the initialiser. Fixed in `356fe39f`
+  (`NSRect(x:y:width:height:)`, value unchanged), merged as `0969068d`. **A lane that
+  touches AppKit cannot be trusted past a real macOS compile, and "the parser was
+  clean" is not evidence about an initialiser signature.**
+- The attempt after that returned `EXIT=137` with the test binary's output entirely
+  missing while the three auxiliary suites still passed: the binary was SIGKILLed
+  and lost its buffered stdout. It was not the change. The same binary at the same
+  SHA, run under a pty, printed `TESTS OK (124340 checks)`; the full script then
+  reproduced it. No jetsam entry, no sleep/wake, 67% memory free - cause unproven,
+  recorded here rather than explained away. Run the test binary under a pty when a
+  killed run has to be diagnosed, because a SIGKILLed process yields no output at all.
+- Cross-review of the lane (independent reviewer, `temp/clip-placement/cross-review.md`)
+  returned 4 PASS and 2 CONCERN, nothing changed. Two carry forward as follow-up work,
+  neither a regression: `savePanelPosition` may record a *forced* placement as the
+  remembered origin (unverified on the platform, and it would erase the user's own drag,
+  which is the operator's requirement), and the cards layout ignores three of the five
+  placement values while the Settings picker stays enabled and silent about it.
+
