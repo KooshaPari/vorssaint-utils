@@ -1241,19 +1241,28 @@ final class ClipboardHistoryService: ObservableObject {
             forKeys: [.fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey]),
               values.isRegularFile == true,
               values.isSymbolicLink != true,
-              ClipboardHistoryEditing.canLoadEncodedHistory(byteCount: values.fileSize),
+              let fileBytes = values.fileSize,
+              fileBytes >= 0, fileBytes <= ClipboardHistoryEditing.maxStoredBytes,
               let data = try? Data(contentsOf: url, options: .mappedIfSafe),
-              ClipboardHistoryEditing.canLoadEncodedHistory(byteCount: data.count)
+              data.count <= ClipboardHistoryEditing.maxStoredBytes
         else { return nil }
         return data
     }
 
     private func load() {
-        let fileData = Self.storeURL.flatMap { Self.storedHistoryData(at: $0) }
+        let rawFileData = Self.storeURL.flatMap { Self.storedHistoryData(at: $0) }
+        // A blob that is not sealed predates at-rest encryption. It stays
+        // readable, and the save below rewrites it sealed instead of waiting
+        // for the next copy: one launch is enough to stop leaving cleartext on
+        // disk. A sealed blob that will not open is a history this Mac no
+        // longer has the key for, and reading it as JSON would be nonsense, so
+        // the file is left alone and the app starts empty.
+        let fileWasPlaintext = rawFileData.map { !ClipboardHistoryEnvelope.isSealed($0) } ?? false
+        let fileData = rawFileData.flatMap { ClipboardHistoryCipher.openOrPassThrough($0) }
         var data = fileData
         if data == nil,
            let legacy = UserDefaults.standard.data(forKey: DefaultsKey.clipboardHistoryEntries) {
-            data = legacy
+            data = ClipboardHistoryCipher.openOrPassThrough(legacy)
             migrateLegacyBlob = Self.storeURL != nil
         }
         guard let data,
@@ -1282,11 +1291,25 @@ final class ClipboardHistoryService: ObservableObject {
         // Sweep image files that lost their entry (crash between write and save).
         ClipboardImageStore.cleanup(keeping: Set(entries.compactMap(\.imageFile)),
                                     filePaths: Set(entries.flatMap(\.filePaths)))
-        // A history read from the legacy blob migrates right away instead of
-        // waiting for the next copy: launching once is enough to leave
-        // UserDefaults behind.
-        if migrateLegacyBlob {
+        // A history read from the legacy blob, or from a file that was still
+        // in cleartext, migrates right away instead of waiting for the next
+        // copy: launching once is enough to leave both behind.
+        if migrateLegacyBlob || (fileWasPlaintext && ClipboardHistoryCipher.isSupported) {
             save()
+        }
+        sealStoredImages()
+    }
+
+    /// Images already on disk from before at-rest encryption are re-written
+    /// sealed once, on the queue the history itself persists on so the two
+    /// cannot interleave. Bounded by the entry count: the launch sweep above
+    /// has already dropped anything with no entry.
+    private func sealStoredImages() {
+        guard ClipboardHistoryCipher.isSupported, let directory = ClipboardImageStore.directory else {
+            return
+        }
+        Self.persistQueue.async {
+            ClipboardImageStore.sealPlaintextFiles(in: directory)
         }
     }
 
@@ -1308,7 +1331,12 @@ final class ClipboardHistoryService: ObservableObject {
         let retireLegacyBlob = migrateLegacyBlob
         Self.persistQueue.async { [weak self] in
             guard let encoded = ClipboardHistoryEditing.encodedHistory(snapshot) else { return }
-            let data = encoded.data
+            // Sealed before the write, and a seal that fails aborts the write
+            // rather than falling back: the file this would replace may
+            // already be encrypted, and a cleartext write here would be a
+            // silent downgrade of the whole history. Losing one save is
+            // recoverable; leaving the history readable is not.
+            guard let data = ClipboardHistoryCipher.sealOrPassThrough(encoded.data) else { return }
             // The PNG sweep waits for the JSON to land and runs back on the
             // main thread against the list as it is then. Sweeping first
             // could strand an entry whose PNG died if the process fell in
@@ -1905,8 +1933,12 @@ enum ClipboardImageStore {
     static func store(_ data: Data) -> String? {
         guard let directory else { return nil }
         PrivateFileStore.createDirectory(at: directory)
+        // Sealed under the same key as the history. A PNG of a copied
+        // screenshot is the most sensitive thing this store holds, so a seal
+        // that fails refuses the write instead of leaving a readable one.
+        guard let sealed = ClipboardHistoryCipher.sealOrPassThrough(data) else { return nil }
         let name = UUID().uuidString + ".png"
-        guard PrivateFileStore.write(data, to: directory.appendingPathComponent(name)) else {
+        guard PrivateFileStore.write(sealed, to: directory.appendingPathComponent(name)) else {
             return nil
         }
         return name
@@ -1914,7 +1946,31 @@ enum ClipboardImageStore {
 
     static func imageData(named name: String) -> Data? {
         guard let directory else { return nil }
-        return try? Data(contentsOf: directory.appendingPathComponent(name))
+        guard let raw = try? Data(contentsOf: directory.appendingPathComponent(name)) else {
+            return nil
+        }
+        return ClipboardHistoryCipher.openOrPassThrough(raw)
+    }
+
+    /// Re-writes any blob still in cleartext from a version before at-rest
+    /// encryption. The name is kept, because the entry list already refers to
+    /// it, and the sealed file is detected by its magic rather than by name, so
+    /// a half-finished migration is readable either way.
+    static func sealPlaintextFiles(in directory: URL) {
+        guard ClipboardHistoryCipher.isSupported,
+              let files = try? FileManager.default.contentsOfDirectory(
+                at: directory, includingPropertiesForKeys: nil)
+        else { return }
+        for file in files {
+            guard let raw = try? Data(contentsOf: file),
+                  !ClipboardHistoryEnvelope.isSealed(raw),
+                  let sealed = ClipboardHistoryCipher.seal(raw)
+            else { continue }
+            // A blob that changed under us (a concurrent copy wrote it) keeps
+            // the newer bytes: this is a migration, not a repair.
+            guard let now = try? Data(contentsOf: file), now == raw else { continue }
+            PrivateFileStore.write(sealed, to: file)
+        }
     }
 
     /// Downsampled preview for list rows, cached; loading full PNGs per row
@@ -1923,14 +1979,13 @@ enum ClipboardImageStore {
         if let cached = thumbnails.object(forKey: name as NSString) {
             return cached
         }
-        guard let directory else { return nil }
-        let url = directory.appendingPathComponent(name)
+        guard let data = imageData(named: name) else { return nil }
         let options = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceThumbnailMaxPixelSize: 480,
         ] as CFDictionary
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options)
         else { return nil }
         let image = NSImage(cgImage: cgImage, size: .zero)

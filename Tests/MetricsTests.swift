@@ -27,6 +27,7 @@ struct MetricsTests {
                 ClipboardFeatureTests.run(suite)
                 PastePlainTests.run(suite)
             }),
+            ("clipboard-at-rest", { ClipboardHistoryAtRestTests.run(suite) }),
             ("window-policy", {
                 WindowPolicyTests.run(suite)
             }),

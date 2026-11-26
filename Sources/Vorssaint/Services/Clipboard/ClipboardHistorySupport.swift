@@ -506,6 +506,13 @@ enum ClipboardHistoryEditing {
     static let maxCharacters = 1_000_000
     static let maxStoredTextUTF8Bytes = 64 * 1_024 * 1_024
     static let maxEncodedHistoryBytes = 96 * 1_024 * 1_024
+    /// A sealed blob is its payload plus a five-byte header, a twelve-byte
+    /// nonce and a sixteen-byte tag. The bound applies to the readable
+    /// snapshot, which is what `encodedHistory` already enforces, so the read
+    /// side has to allow the wrapper on top or a history at the limit would be
+    /// rejected the launch after it was written.
+    static let sealOverheadBytes = 64
+    static var maxStoredBytes: Int { maxEncodedHistoryBytes + sealOverheadBytes }
     /// Rows only need enough text to fill their three visible lines. Keeping
     /// this bounded prevents a very large saved document from being copied
     /// again merely to draw its list preview.
@@ -1384,11 +1391,18 @@ enum ClipboardHistorySensitiveText {
 }
 
 enum ClipboardHistoryImageSupport {
+    /// Reads the entry's picture through the same at-rest layer the store
+    /// writes with, so tests that hand in a directory of plain PNGs still get
+    /// an image and a sealed store still opens.
     static func editorImage(for entry: ClipboardHistoryEntry, directory: URL) -> NSImage? {
         guard entry.kind == .image, let name = entry.imageFile,
               !name.isEmpty, (name as NSString).lastPathComponent == name
         else { return nil }
-        return NSImage(contentsOf: directory.appendingPathComponent(name))
+        let url = directory.appendingPathComponent(name)
+        guard let raw = try? Data(contentsOf: url),
+              let data = ClipboardHistoryCipher.openOrPassThrough(raw)
+        else { return nil }
+        return NSImage(data: data)
     }
 
     static let imageExtensions: Set<String> = [
