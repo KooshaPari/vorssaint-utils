@@ -213,15 +213,37 @@ batched `./build.sh --test` run per branch on `kooshas-laptop`.
 | `dev/e1-tailnet` | 123873 checks PASS | `26a9d8dd` |
 | `dev/e2-mullvad` | 123881 checks PASS | `a3cd7f2c` |
 | `dev/g-flux-warmth` | 123868 checks PASS | `41baa8cc` |
-| `dev/g-smb-mesh` | build passed (no TESTS OK line captured) | `ca5edd58` |
+| `dev/g-smb-mesh` | **tested, not green** — 4 checks failed in the merged tree | `ca5edd58` |
 
 - Four merged worktrees (`vorssaint-utils-{e1,e2,flux,mesh}`) were removed after
   the merge, so no lane is left on disk unmerged.
 - The merged tree was then re-run on the Mac and reported
   `DEVELOPER INSTALL ISOLATION TESTS OK`.
+- **The merge gate was not met, and the per-branch row for `dev/g-smb-mesh` above
+  was wrong to read as "fine".** A run with the full log captured returned
+  `TESTS FAILED (4 of 124232)`, all four in that branch's own suites:
+  `SMBSharesTests.swift:179`, `SMBSharesTests.swift:325`,
+  `ComputeMeshTests.swift:86`, `ComputeMeshTests.swift:92`. A count-less
+  "build passed" is not a test result; only the counts are.
+- Causes, both real: the mount lookup answered "mounted" for any endpoint sitting
+  on the configured path before comparing server and share, so another server's
+  identically named share read as this share's mount; and the unmount resolved
+  the mount table before the configured share, so an unconfigured id reported a
+  table failure instead of `unknownShare`. The two mesh failures were the test's
+  own scenario: an empty device list is a present backend with nothing attached,
+  while `nil` is a missing one, and the "three absent backends" case had left it
+  empty.
+- Fixed in `2152cf7a`, which also adds `Tests/LinuxSubsetCheck.sh` so those two
+  Foundation-only suites iterate here instead of costing a Mac round trip. See
+  the correction in `docs/NIXOS_READINESS.md`.
+- `2152cf7a` carries `tx-agent: human`: `git-commit` detected only
+  `JCODE_SESSION_ID` and kcode sets `KCODE_SESSION_ID`. The tool is fixed; the
+  commit is an agent commit regardless of its trailer, and it was already pushed,
+  so the ledger records the discrepancy here rather than rewriting history.
 - `docs/NIXOS_READINESS.md` records why the app cannot be built here: SwiftPM
   resolves to `x86_64-unknown-linux-gnu` and there is no Apple SDK, so
-  `import AppKit` fails. nixOS is a git and coordination node only; the Mac is
-  the only build and verify target.
+  `import AppKit` fails. nixOS is a git and coordination node, plus the
+  Foundation-only subset check above; the Mac is the only release build and
+  verify target.
 - Two new lanes opened from `ca5edd58`: `dev/knu-review` (K1-K4 above) and
   `dev/clip-placement` (A9 above).
