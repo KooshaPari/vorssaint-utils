@@ -91,7 +91,7 @@ implementation, bundle it.
 
 | # | Item | Status |
 | --- | --- | --- |
-| E1 | Tailscale integration: bind agent and harness services to the tailnet, verify peer identity | queued |
+| E1 | Tailscale integration: bind agent and harness services to the tailnet, verify peer identity | shipped, and this row was stale like E2: `e41ea061` landed the binding with verified peer identity and `c0316be3` fixed the tool-path and fixture checks macOS found (`Sources/Vorssaint/Services/Tailnet/`, 355 lines). `TailnetTests` runs inside the `network` group, which reported `OK (254 checks)` at `03906740`; that group is shared with NetworkFeatureTests, SpeedTestTests and NetworkAddressTests, so 254 is the group's count and not E1's alone |
 | E2 | Mullvad integration: per-provider egress policy through its SOCKS5 or CLI, refuse rather than fall back | shipped, and this row was stale: `cf5ee226` landed `EgressPolicy`, `ProviderEgress` and `MullvadProbe` (`Sources/Vorssaint/Services/NetworkEgress/`, 404 lines) with `Tests/MullvadEgressTests.swift` registered in the `mullvad-egress` group, `AgentPriceSource` as its caller. The macOS gate at `03906740` ran that group: `mullvad-egress: OK (84 checks, 0.01s)` inside the 124440-check run. The refusal shape is a policy property: an undeclared or malformed declaration refuses every lookup rather than sending the request directly, and the probe distinguishes a closed SOCKS port from a live listener whose relay is gone. Not verified: the live path, because no Mullvad instance runs on either host, so the 84 checks exercise the injected transport rather than a real handshake |
 
 ## F. Packaging and security
@@ -192,9 +192,9 @@ implementation, bundle it.
 
 | Candidate | Note | Status |
 | --- | --- | --- |
-| Flux (f.lux) | display colour temperature with a schedule. Vorssaint has brightness and extra brightness only | queued |
+| Flux (f.lux) | display colour temperature with a schedule. Vorssaint has brightness and extra brightness only | shipped, and this row was stale: the `flux` group reports `OK (71 checks)` at `03906740` and its five sub-groups (`flux-schedule` 23, `flux-override` 9, `flux-invalid` 9, `flux-colour` 19, `flux-restore` 11) exercise schedule, override, malformed input, colour maths and restore. Those sub-counts are inside the 71, so they must not be added to it |
 | OpenRGB | RGB lighting control. macOS coverage is partial and hardware-specific, so treat as an optional sidecar rather than a native rewrite | needs info |
-| SMB and compute-mesh management | mount and manage SMB shares, and a mesh view over Tailscale peers and SSH hosts, beside the existing `connectedDevices` and `portManager` | queued |
+| SMB and compute-mesh management | mount and manage SMB shares, and a mesh view over Tailscale peers and SSH hosts, beside the existing `connectedDevices` and `portManager` | shipped, and this row was stale: `Sources/Vorssaint/Services/SMB` and `.../Mesh` exist, and at `03906740` the `smb-*` groups report 11 + 10 + 21 + 7 (configuration, listing, mount, unmount) while `mesh` reports 79 with `mesh-sources` 12, `mesh-ssh` 7 and `mesh-merge` 11 nested inside it |
 | Kcode Notifications (`~/Applications`) | the companion app named in D4 and D5; the natural surface for instinct and Hermes events | needs info |
 | Parsec, UTM, OBS, balenaEtcher, qBittorrent, Steam, Blender, Xcode | installed but out of scope unless asked. OBS overlaps `screenRecorder` only | parked |
 | RemoveMacAI, oMLX, Slipstream, rio, Ghostty | installed, purpose unverified | needs info |
@@ -584,3 +584,31 @@ is weaker than "this row's assertion ran": the group-to-file mapping above is re
 per-assertion trace. Rows whose behaviour is a compiled-in decision (E2's refusal policy,
 D2's no-pane-contents rule) are additionally checked structurally from source, which is
 the stronger evidence for those.
+
+## Pillar tally, recomputed from the tree instead of from the status column
+
+Reading statuses was what produced the wrong picture. Re-derived from source and from
+the 03906740 run's group output:
+
+| Pillar | Shipped / total | Which rows |
+| --- | --- | --- |
+| A clipboard parity | 8 / 8 | A1-A9 |
+| A2 KNU | 4 / 4 | K1-K4 |
+| B window policy | 4 / 4 | B1-B4 |
+| D AI agents | 3 / 6 | D1, D2, D3 shipped; D4, D5, D6 `needs info` |
+| E network | **2 / 2** | E1 and E2 both shipped - the section previously read 0 / 2 |
+| F packaging | 0 / 3 | F1 blocked on notary credentials, F2 follows F1, F3 replaced by a source-derived review |
+
+That is **21 of 27**, not 19 of 27: the two E rows were shipped work filed as `queued`,
+and E1 had even been through a macOS fix pass (`c0316be3`) after `e41ea061` landed it.
+
+Three status mistakes in one section is a pattern, not bad luck: a row was written as a
+plan and never revisited once the code landed, so the section describes an earlier week
+and reads as if nothing had happened. The rule that follows is to derive a row's status
+from a group in the gate log and a directory under `Sources/`, and only then write the
+word. A row with no group and no directory is genuinely not started.
+
+One further stale item: the topology note says NixOS SSH key auth is refused, so
+offloading is blocked. This lane is executing on NixOS directly and has been for its
+whole life, so that line is true only of the SSH path from another host, not of NixOS
+availability.
