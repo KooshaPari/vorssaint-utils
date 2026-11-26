@@ -854,3 +854,34 @@ transcript reaches the script's final `OK` stage with no failure line, which is 
 state the previous gated runs exited 0 from, but the number itself was not observed.
 
 Attempt 5's scheduled probe is now redundant; it was left in place rather than cancelled mid-window.
+
+### P86-1 written up: the App Store half was overclaimed, the fragility half was underclaimed
+
+Design note at `docs/P86-1-NOW-PLAYING-CHANNEL.md`. P86-1 called the perl bridge a blocker because
+of App Store rejection; that half does not hold. The product already needs Accessibility event taps,
+`IOHIDEventSystemClient` SPI and a sudoers-installed root daemon, so the App Store channel was off
+the table before Now Playing mattered, and the perl hop itself notarizes fine: the adapter is signed
+with the Developer ID and `--options runtime`, under its own identifier, staged inside
+`Contents/Frameworks` (`build.sh:61-64`, `:171-172`), so hardened-runtime library validation is
+satisfied and `notarytool` has nothing to object to.
+
+What is genuinely wrong is the failure mode, and it is worse than the finding says. The chain depends
+on four things outside the app's control — `/usr/bin/perl` still existing, `DynaLoader` still
+working, private MediaRemote symbol names not moving, and MediaRemote continuing to answer platform
+binaries — and every one of them fails *silently*: `RadialNowPlayingService.swift:356-361` returns
+`completion(nil)` and `NotchMusicService` calls `connectionEnded()`, so the notch shows no track and
+says nothing.
+
+Three options with costs are in the note. Recommendation: make the failure legible first (map the
+perl script's existing distinct `die` statuses at `now-playing.pl:16-21` to a reason shown in the
+notch's empty state and in `TROUBLESHOOTING.md`), then move Apple Music and Spotify to Apple Events —
+public API under an entitlement the app already declares — and keep the private path only as
+fallback. Dropping "other players" entirely is the smaller tree but a real feature loss and only
+worth it if the fallback turns out to cover almost nobody.
+
+Corrected in passing: an earlier draft of the note asserted "the app already has a diagnostics
+surface". It does not; `find Sources -iname '*diagnos*'` returns nothing. The note now says so, which
+is the kind of thing that would otherwise get quietly built on.
+
+No code changed, so there is nothing to gate. P86-1 stays open at the design step until the
+"legible failure" change is written.
