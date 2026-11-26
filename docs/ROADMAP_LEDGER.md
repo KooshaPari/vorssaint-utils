@@ -641,3 +641,16 @@ Until it runs, the honest status of this row is `change_made`, not `workflow_val
 A 6-check harness test and a print-format change do not plausibly break 124,440 existing
 checks, but "does not plausibly" is not evidence, and this lane has already been wrong
 once about a number derived from a log it had not re-read.
+
+### Gate retry probe, 2026-11-26T12:57Z - still unreachable
+
+Scheduled retry `sched_2477f67b` fired and probed once, as instructed (no retry loop):
+
+- `ping -c 2 -W 2 100.112.14.98` -> 2 transmitted, 0 received, 100% loss
+- `tailscale status` -> `kooshas-laptop active; relay "lax"; offline, last seen 28m ago, tx 4992 rx 0`
+- `ssh -o ConnectTimeout=20 kooshas-laptop hostname` -> `connect to host kooshas-laptop port 22: Connection timed out`
+
+`tx 4992 rx 0` is the interesting figure: the laptop is still *sending* a little and receiving
+nothing back, which is a path/relay problem rather than a powered-off machine. Nothing to do from
+this side. `89cca321` and everything after it remain `change_made`, not `workflow_validated`.
+The retry is rescheduled rather than dropped.
