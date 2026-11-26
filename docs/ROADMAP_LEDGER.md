@@ -654,3 +654,70 @@ Scheduled retry `sched_2477f67b` fired and probed once, as instructed (no retry 
 nothing back, which is a path/relay problem rather than a powered-off machine. Nothing to do from
 this side. `89cca321` and everything after it remain `change_made`, not `workflow_validated`.
 The retry is rescheduled rather than dropped.
+
+## P86-5 closed at `change_made`: keychain secrets were migratable off the device
+
+Two writers stored secrets with `kSecAttrAccessibleAfterFirstUnlock`, which is the
+**migratable** class: an encrypted backup restored onto a different Mac brings the item
+with it, so an agent provider key or an SMB share password followed the backup off the
+machine that earned it. Sites: `AgentUsage/AgentSecretStore.swift:41` (provider keys) and
+`SMB/SMBSharesLive.swift:33` (share passwords).
+
+Both now write through one `AgentSecretAccessibility.item`
+(`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`). Deliberately not the stricter
+`WhenUnlocked…` class: a menu bar app that launches at login runs before any user unlock,
+and the stricter class would leave it unable to read its own keys until someone touched
+the keyboard.
+
+Two details that are the actual fix rather than the decoration:
+
+- `KeychainAgentSecretStore.updateAttributes(for:)` puts the accessibility class in the
+  `SecItemUpdate` dict as well as the data. Without that, an existing install keeps the
+  migratable class forever, because a data-only update never re-classifies an item. Both
+  the update and add paths use it; add still sets `kSecAttrSynchronizable: false`.
+- The shared constant sits **below** `KeychainAgentSecretStore`. `Tests/LinuxSubsetCheck.sh`
+  extracts everything above that struct into a Linux build with `awk … /^struct
+  KeychainAgentSecretStore/{exit}`, so a Security symbol declared earlier would have been
+  compiled into a target that cannot link `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`.
+
+Guarded by `smb-secret-accessibility` in `Tests/SMBSharesTests.swift` (six source-level
+assertions, inside the existing SMB group so the gate's group list is unchanged and the
+check also runs on Linux). The per-line form matters: `…AfterFirstUnlock` is a prefix of
+`…AfterFirstUnlockThisDeviceOnly`, so a substring test would pass on the bad line.
+
+RED, pre-fix source restored from `git show HEAD:` into both files:
+
+```
+smb-secret-accessibility: FAILED (6 checks)
+SUBSET FAILED (5 of 85)
+EXIT=1
+```
+
+GREEN, post-fix source:
+
+```
+smb-secret-accessibility: OK (6 checks, 0.00s)
+SUBSET OK (85 checks) — not the release gate
+EXIT=0
+```
+
+79 -> 85 checks, matching the six new assertions. Commit `dd074a4f`.
+
+Honest status: **`change_made`.** `LinuxSubsetCheck.sh` compiles neither changed file
+(they need Security), so nothing here is type-checked, and no real keychain item was
+written or re-classified. The macOS gate remains the only authority, and it is still down.
+
+### Gate probe, 2026-11-26T13:05Z — attempt four, still unreachable
+
+One bounded probe, no retry loop: `ssh -o ConnectTimeout=10 -o BatchMode=yes
+kooshas-laptop 'echo ALIVE'` -> `connect to host kooshas-laptop port 22: Connection timed
+out`, rc 255 after 10 s. Unchanged from attempt three.
+
+Tooling note for the next attempt: a combined probe that pipes (`ping … | tail`, then
+`tailscale status`, then `ssh`) hung past 120 s with **no output at all** and had to be
+cancelled, twice over two stretches. `tailscale status` on this host is the likely blocker,
+and a pipe hides where it stopped. Probe with the bare `ssh` invocation only, no pipes, and
+read the exit code.
+
+`89cca321` (harness) and `dd074a4f` (P86-5) both remain `change_made`, not
+`workflow_validated`, until the gate runs.
