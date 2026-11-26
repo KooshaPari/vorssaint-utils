@@ -359,3 +359,39 @@ Foundation harness on the real 15-language table, with "every claim about a
 window, a panel or a picker is a reading of the source" stated outright. That is
 the standard here - a parse is not a typecheck, and the report says which one it
 had.
+
+## KNU review follow-ups, verified
+
+`TESTS OK (124381 checks)` at `597a2466`, exit 0, 316 s, all three auxiliary
+suites OK. Eight above 124373, which is the new title-agreement and apostrophe
+assertions.
+
+Three of the cross-review's findings are closed. The parser now folds U+2019 and
+U+2018 before matching `What's KNU`, so an editor's smart quote can no longer turn
+the KNU bullet into an ordinary `.changed` line while every test stays green - the
+class of bug where the test folds and production does not, and so the test proves
+the test. A nested row now takes its title from the Settings row it is filed
+under, so the window no longer reads `Clipboard history` over `Clipboard`. And the
+changelog's `What's KNU` preamble is prose for the reader again; the maintenance
+rule it used to carry moved to the doc comment on `NewFeatureBadges.tagged`, which
+is the value the rule is about.
+
+The evidence standard this lane met is worth copying: it did not merely add
+assertions and report them green, it swapped the pre-fix source under the new
+tests and showed them **red** (three rows for the apostrophe, two for the pairing),
+then showed them green with the fix. That red-then-green pair is the difference
+between a test that constrains the code and a test that describes it.
+
+Also recorded honestly: while proving the title fix, the author's first fixture was
+wrong - the old two-page-row sidebar makes `representedFeature` nil, so the
+harness failed for the fixture rather than the fix - and the report says so instead
+of quietly adjusting the expectation to match. The real sidebar has a
+`.feature(...)` row for an anchored tool, which is the row `rowID(for:)` files
+under.
+
+Still open, deliberately, in their own lane: no date or time is rendered in the
+app (only in `CHANGELOG.md`), the What's New window has no search field of its own,
+a tagged feature whose bullet is excluded from the digest gets a page with no
+sentence about what a person can now do, and the de-duplication is one-sided so a
+bullet naming both a tagged feature and a feature with its own sidebar row would
+print twice - unreachable from today's bullets and one changelog sentence away.
