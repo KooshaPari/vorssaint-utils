@@ -18,7 +18,8 @@ protocol AgentSecretStore {
 
 /// The real store: one generic password item per key, in the login keychain.
 /// Accessible after first unlock so a menu bar app that launches at login can
-/// still reach it, and never synchronised to iCloud.
+/// still reach it, never synchronised to iCloud, and never migratable to
+/// another device.
 struct KeychainAgentSecretStore: AgentSecretStore {
     var service = "com.vorssaint.agent-keys"
 
@@ -30,15 +31,27 @@ struct KeychainAgentSecretStore: AgentSecretStore {
         ]
     }
 
+    /// The update dict for an item that already exists. It carries the
+    /// accessibility class as well as the data, because an item written by an
+    /// earlier build keeps the old migratable class until a write re-classifies
+    /// it; updating only the data would leave that hole open for existing
+    /// installs.
+    func updateAttributes(for data: Data) -> [String: Any] {
+        [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: AgentSecretAccessibility.item,
+        ]
+    }
+
     func set(_ secret: String, for id: UUID) -> Bool {
         let data = Data(secret.utf8)
         let base = query(for: id)
-        let update: [String: Any] = [kSecValueData as String: data]
+        let update = updateAttributes(for: data)
         let status = SecItemUpdate(base as CFDictionary, update as CFDictionary)
         if status == errSecItemNotFound {
             var add = base
             add[kSecValueData as String] = data
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            add[kSecAttrAccessible as String] = AgentSecretAccessibility.item
             add[kSecAttrSynchronizable as String] = false
             return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
         }
@@ -68,6 +81,17 @@ struct KeychainAgentSecretStore: AgentSecretStore {
         let status = SecItemDelete(query(for: id) as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
     }
+}
+
+/// The one accessibility class a Vorssaint secret may use. `AfterFirstUnlock`
+/// alone is migratable: an encrypted backup restored onto a different Mac
+/// brings the item with it, so a provider key or a share password would follow
+/// the backup off the machine that earned it. The `ThisDeviceOnly` variant is
+/// reachable after first unlock (a menu bar app that launches at login still
+/// works) but can never leave the device. It lives below the Keychain store
+/// because it names a Security constant, which the Linux subset cannot link.
+enum AgentSecretAccessibility {
+    static let item: CFString = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 }
 
 /// Test double with the same contract, so registry behaviour is exercised

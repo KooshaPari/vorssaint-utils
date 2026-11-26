@@ -25,12 +25,19 @@ struct KeychainSMBProjection: SMBKeychainProjection {
 
     func publish(_ secret: String, for share: SMBShare) -> Bool {
         let base = query(for: share)
-        let update: [String: Any] = [kSecValueData as String: Data(secret.utf8)]
+        // The accessibility class travels with the data on both paths. An item
+        // written by an earlier build keeps the old migratable class until a
+        // write re-classifies it, so updating only the data would leave a share
+        // password able to follow an encrypted backup to another Mac.
+        let update: [String: Any] = [
+            kSecValueData as String: Data(secret.utf8),
+            kSecAttrAccessible as String: AgentSecretAccessibility.item,
+        ]
         let status = SecItemUpdate(base as CFDictionary, update as CFDictionary)
         if status == errSecItemNotFound {
             var add = base
             add[kSecValueData as String] = Data(secret.utf8)
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            add[kSecAttrAccessible as String] = AgentSecretAccessibility.item
             add[kSecAttrSynchronizable as String] = false
             return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
         }

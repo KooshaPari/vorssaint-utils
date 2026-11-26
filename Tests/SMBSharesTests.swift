@@ -325,6 +325,74 @@ enum SMBSharesTests {
             suite.expect(service.unmount(shareID: archiveID) == .unknownShare,
                          "unmounting an unconfigured identifier changes nothing")
         }
+
+        // Keychain accessibility is a source property, not a runtime one: the
+        // real store needs the Security framework, so there is no way to ask an
+        // item what class it was written with on a Linux node. Reading the two
+        // source files is the check that can run both here and on the Mac, and
+        // it is the check that catches a future edit reintroducing the
+        // migratable class.
+        suite.run("smb-secret-accessibility") {
+            for (label, relative) in [
+                ("agent secret store", "Sources/Vorssaint/Services/AgentUsage/AgentSecretStore.swift"),
+                ("smb share secrets", "Sources/Vorssaint/Services/SMB/SMBSharesLive.swift"),
+            ] {
+                guard let source = SMBSharesTests.sourceText(relative) else {
+                    suite.expect(false, "\(label): source not found at \(relative)")
+                    continue
+                }
+
+                // Every line that picks an accessibility class must pick the
+                // device-bound one. `AfterFirstUnlock` is a prefix of
+                // `AfterFirstUnlockThisDeviceOnly`, so the test is per line:
+                // a line may mention the plain constant only if it also names
+                // the ThisDeviceOnly form.
+                let offenders = source
+                    .split(separator: "\n", omittingEmptySubsequences: false)
+                    .filter { $0.contains("kSecAttrAccessibleAfterFirstUnlock") }
+                    .filter { !$0.contains("ThisDeviceOnly") }
+                suite.expect(offenders.isEmpty,
+                             "\(label): no line uses the migratable accessibility class, found \(offenders.count)")
+
+                // The class must be present at all, otherwise the check above
+                // would pass vacuously on a file that stopped writing secrets.
+                suite.expect(source.contains("AgentSecretAccessibility.item"),
+                             "\(label): writes go through the shared device-bound constant")
+            }
+
+            // An item written by an earlier build keeps its old class until a
+            // write re-classifies it, so the update path must carry the
+            // accessibility attribute too, not only kSecValueData.
+            if let store = SMBSharesTests.sourceText("Sources/Vorssaint/Services/AgentUsage/AgentSecretStore.swift") {
+                let updateBodies = store
+                    .components(separatedBy: "kSecValueData as String")
+                    .dropFirst()
+                suite.expect(updateBodies.contains { $0.contains("kSecAttrAccessible") },
+                             "the existing-item update carries an accessibility class")
+            }
+            if let live = SMBSharesTests.sourceText("Sources/Vorssaint/Services/SMB/SMBSharesLive.swift") {
+                suite.expect(live.contains("kSecAttrAccessible as String: AgentSecretAccessibility.item"),
+                             "the smb update path carries the device-bound class")
+            }
+        }
+    }
+
+    /// Resolve a repo-relative source path from either the test file's own
+    /// location (a macOS build) or the process working directory (the Linux
+    /// subset compiles this file into a temporary directory, where the sibling
+    /// `Sources/` tree does not exist).
+    static func sourceText(_ relative: String) -> String? {
+        var roots: [String] = []
+        let fileDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        roots.append(fileDir.deletingLastPathComponent().path)
+        roots.append(FileManager.default.currentDirectoryPath)
+        for root in roots {
+            let candidate = URL(fileURLWithPath: root).appendingPathComponent(relative).path
+            if let text = try? String(contentsOfFile: candidate, encoding: .utf8) {
+                return text
+            }
+        }
+        return nil
     }
 
     static func mediaShare() -> SMBShare {
