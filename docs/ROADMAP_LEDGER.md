@@ -756,3 +756,31 @@ is the same evidence from the other direction: nothing is being resolved by acci
 Shim fidelity is the limit to keep in mind. `CFString` is `String` and `CFDictionary` is
 `NSDictionary` in the shim, so `as CFString` conversions are wider than Darwin's and could
 accept something the Mac rejects. The pre-flight narrows the gap; it does not close it.
+
+## P86-6 corrected: the taps already recover, so the deadlock class was the real defect
+
+The P86-6 finding says a `DispatchQueue.main.sync` inside a CGEventTap callback makes macOS
+time the tap out and let the keystroke pass through unmodified. Reading both taps, that is
+mostly wrong, and the wrong part matters because it hides what is actually wrong.
+
+- Both taps **already handle the timeout**: `FinderCutPaste.swift:258` and
+  `SuperKeyService.swift:654` both test `type == .tapDisabledByTimeout || type ==
+  .tapDisabledByUserInput` and re-enable the tap when the session is active and accessibility
+  is still trusted. So a main-thread stall costs one unmodified keystroke and a log line, not
+  a dead keyboard.
+- Both taps run on a **dedicated thread** with their own `CFRunLoop`
+  (`FinderCutPaste.swift:200-245`), so the sync hop cannot deadlock today.
+- `SuperKeyService.swift:884-890` already guards its hop with `Thread.isMainThread`.
+
+What was genuinely left: `FinderCutPaste.swift:282` was the one unguarded main hop reached
+from a tap callback, and the other four main hops in this target
+(`TextSnippetService:420`, `MouseAppExceptions:113`, `SuperKeyService:888`,
+`CommandBarService:680`) all carry `Thread.isMainThread ? … : sync`. If the tap were ever
+added to the main run loop instead of its own thread, `route` would call `main.sync` from the
+main thread and hard-deadlock the keyboard. It now goes through `Self.onMain`, which is the
+same guard spelled once.
+
+Honest status: `change_made`. This is correctness by construction with no fixture behind it:
+"this call happens on the tap thread" is not expressible in a test, and `FinderCutPaste`
+imports AppKit so the Linux subset cannot compile it. The timeout re-enable above is the
+runtime behaviour that would show a regression on the Mac, and it is untouched.

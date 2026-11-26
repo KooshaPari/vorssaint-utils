@@ -278,11 +278,18 @@ final class FinderCutPaste: ObservableObject {
               keyCode == Key.x || keyCode == Key.c || keyCode == Key.v
         else { return Unmanaged.passUnretained(event) }
 
-        var verdict: Unmanaged<CGEvent>?
-        DispatchQueue.main.sync {
-            verdict = self.handle(event: event)
-        }
-        return verdict
+        return Self.onMain { self.handle(event: event) }
+    }
+
+    /// Runs `work` on the main thread and returns its result. The tap callback
+    /// runs on its own thread today, so the plain `DispatchQueue.main.sync`
+    /// would work; a tap added to the main run loop later would turn it into a
+    /// hard deadlock that freezes the keyboard, and the rest of this target
+    /// already guards every main hop that way
+    /// (`TextSnippetService`, `MouseAppExceptions`, `SuperKeyService`). The
+    /// guard costs one thread-local read per intercepted ⌘X/⌘C/⌘V.
+    private static func onMain<T>(_ work: () -> T) -> T {
+        Thread.isMainThread ? work() : DispatchQueue.main.sync(execute: work)
     }
 
     /// Runs on the main thread, so reading `marked` and the pasteboard here is
