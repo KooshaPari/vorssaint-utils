@@ -822,3 +822,35 @@ Status `change_made`, ungated. The scoping lane's worker died on the same
 `opencode-go:deepseek-v4.1-flash` mid-stream failure as the earlier ones, so this scope and its
 fix were done directly in the lane checkout; `kooshas-laptop` remains offline and no macOS result
 exists for any of the four prior commits either.
+
+### The gate came back: `6bce2a44` is the first validated commit in this stretch
+
+`kooshas-laptop` answered on the fifth attempt — the bare no-pipe probe returned `ALIVE` / rc 0 in
+209 ms, where attempt 4's piped probe had hung past 120 s twice. Fetch, checkout
+`dev/maccy-clipboard-parity`, `git merge --ff-only origin/…` to `6bce2a44b`, then `./build.sh --test`
+detached (`setsid` does not exist on macOS; `nohup … & disown` with all three fds redirected works
+and returned in 3 s).
+
+Result: **`TESTS OK (124455 checks)`**, `PREFERENCE CLEANUP TESTS OK`, `UNINSTALL SPACES TESTS OK`,
+`DEVELOPER INSTALL ISOLATION TESTS OK`, and **zero `FAILED` lines in the whole transcript**.
+Both new guard groups are present and green in the macOS run: `smb-secret-accessibility: OK
+(6 checks)` and `private-file-store-backup-exclusion: OK (3 checks)`. Wall time roughly 12 minutes.
+
+Totals: prior gated run `124440` at `03906740`; this run `124455` at `6bce2a44`. That is +15, of
+which +6 is the new `NewFeatureBadgesTests.swift` suite that arrived with the harness merge, +6 is
+P86-5, +3 is P86-3. The +6 prediction for P86-5 was therefore right about P86-5 and wrong about the
+total, because the merge added a suite of its own.
+
+Because `6bce2a44` has the other four commits as ancestors, this single run compiles and exercises
+them: `89cca321` (harness merge), `dd074a4f` (P86-5 keychain device binding), `14adc551`
+(`KeychainCompileCheck.sh`) and `c2dfb4ca` (P86-6 tap main-hop guard) are **no longer ungated**.
+They are `workflow_validated` — the suite compiled them and ran green — with the honest caveat that
+"compiled and the tests pass" is not "the runtime behaviour was observed": nothing in this run
+touched a real keychain item or a real event tap. `outcome_delivered` is still not claimed for
+either.
+
+Caveat on the exit code: the run was detached, so `build.sh`'s own status was not captured. The
+transcript reaches the script's final `OK` stage with no failure line, which is the same terminal
+state the previous gated runs exited 0 from, but the number itself was not observed.
+
+Attempt 5's scheduled probe is now redundant; it was left in place rather than cancelled mid-window.
