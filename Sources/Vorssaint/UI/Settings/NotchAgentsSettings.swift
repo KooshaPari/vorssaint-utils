@@ -152,6 +152,11 @@ struct NotchAgentsSettingsControls: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+
+            // Read-only views over the same published readings the island
+            // shows: the period breakdown, and the sessions on disk.
+            NotchAgentsUsageSection()
+            NotchAgentsSessionsSection()
         }
         .toggleStyle(.switch)
         .onAppear {

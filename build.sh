@@ -480,6 +480,7 @@ if (( TEST )); then
         Sources/Vorssaint/Services/Clipboard/ClipboardHistorySupport.swift
         Sources/Vorssaint/Services/Clipboard/ClipboardHistoryEnvelope.swift
         Sources/Vorssaint/Services/Clipboard/ClipboardHistoryCipher.swift
+        Sources/Vorssaint/Services/AgentUsage/AgentSessionCatalog.swift
         Sources/Vorssaint/Core/ColorValue.swift
         Sources/Vorssaint/Services/Clipboard/ClipboardAutoClearSupport.swift
         Sources/Vorssaint/Services/AutoQuit/AutoQuitSupport.swift

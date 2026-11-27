@@ -39,6 +39,9 @@ struct MetricsTests {
                 AgentKeyUsageTests.run(suite)
                 AgentKeyProvisioningTests.run(suite)
             }),
+            ("agent-sessions", {
+                AgentSessionCatalogTests.run(suite)
+            }),
             ("pointer-input", {
                 PointerOnDisplayContract.run(suite)
                 PointerInputFeatureTests.run(suite)
