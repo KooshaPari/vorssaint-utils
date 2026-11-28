@@ -102,11 +102,17 @@ enum SwitcherScrollContract {
                     drainGeneration = 1
                     DispatchQueue.main.async { drainGeneration = 2 }
                 }
-                let deadline = Date().addingTimeInterval(0.5)
+                // A scroll animation settles in well under this, and the loop
+                // returns the moment the condition holds, so the budget only
+                // costs anything when the assertion is about to fail. Half a
+                // second was measured too short: on a loaded machine two runs of
+                // this suite failed different steps of the same family because
+                // the offset had not animated yet.
+                let deadline = Date().addingTimeInterval(3.0)
                 repeat {
                     hosting.layoutSubtreeIfNeeded()
                     if drainGeneration == 2 && condition() { return }
-                    RunLoop.current.run(until: min(deadline, Date().addingTimeInterval(0.012)))
+                    RunLoop.current.run(until: min(deadline, Date().addingTimeInterval(0.02)))
                 } while Date() < deadline
                 hosting.layoutSubtreeIfNeeded()
             }
