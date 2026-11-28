@@ -1094,7 +1094,7 @@ With P86-3 delivered, every one of the six findings has an answer that can be po
 | P86-1 now-playing channel | closed: the card says why the channel is broken | `678a72b4` |
 | P86-2 private HID SPI | closed: six symbols resolve or withdraw | `2560553e` |
 | P86-3 clipboard at rest | closed: AES-GCM under a ThisDeviceOnly key | `687a9367`, `440c6f69`, `fdf7c416` |
-| P86-4 passwordless-root grant | disclosure corrected; the grant itself is a scheduled project, not a fix | `6dbacb8a`, `docs/P86-2-4-SPI-AND-PRIVILEGE.md` |
+| P86-4 passwordless-root grant | **shipped at `workflow_validated` minus its live step**: the closed-lid flag goes through the signed helper first, and sudo is the fallback rather than the only route | `71f130f5`, `65e3ad37`, `e957ebbf`, `docs/P86-4-B-PRIVILEGED-HELPER.md` |
 | P86-5 keychain accessibility | closed at `change_made`: `ThisDeviceOnly` on the secret writer | recorded above |
 | P86-6 main-thread taps | corrected: the taps already recover, and the deadlock class was the defect | recorded above |
 
@@ -1136,3 +1136,29 @@ check: toggling the preference and reading `pmset -g` and `/etc/sudoers.d` back.
 named in that doc as the final step rather than skipped.
 
 **D is now 5 of 6**, with D6 the only open row, and the tally becomes **24 of 27**.
+
+### P86-4 option B implemented, and what the gate did and did not prove
+
+`71f130f5`, `65e3ad37` and `e957ebbf` on `dev/maccy-clipboard-parity`. The closed-lid
+flag now has a route that needs no standing grant: `FanControlXPCProtocol` gained one
+operation, `setDisablesleep(_:withReply:)`, and the helper answers it by running
+`/usr/bin/pmset` by absolute path with two constant arguments. The client
+(`SleepDisableControl.apply`) returns `Bool?`, so `nil` means "the helper did not
+answer" and only then does `Sudoers` reach for `sudo -n`.
+
+One Mac gate run on `0acb12fb`, no retry: **`TESTS OK (124614 checks)`**, zero lines
+matching `FAIL`, `privileged-sleep: OK (17 checks)`. The +18 over the previous gate is
+itemised in `docs/VALIDATION_LOG.md` — 17 new checks plus one because the
+preference-namespace guard adds a check per `Tests/*.swift` file.
+
+The honest limit: **the helper was never asked to do anything.** The gate proves the
+operation compiles into the helper binary and that the app's client links in both the
+app and test builds. It does not prove the daemon answers, because the service has to be
+registered and approved in Login Items first, and nothing in this run touched `pmset`,
+the preference, or the fan-control service. The row above therefore does not claim
+`outcome_delivered`; the live toggle stays the one step an agent at a keyboard-less
+prompt cannot take, and it is written as an open step rather than a completed one.
+
+The grant the finding is about is now optional rather than required, which is the
+material change: a user who never installs the sudoers rule gets a working closed-lid
+toggle, and `SelfUninstall`'s cleanup of that rule stops being load-bearing.
