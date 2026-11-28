@@ -1106,3 +1106,35 @@ a second Mac. Both are stated in their own entries rather than averaged away her
 
 F3 moves to shipped, so **F is 1 / 3**: F1 is still blocked on notary credentials and F2 still
 follows F1. The tally becomes **22 of 27**.
+
+### D4 and D5 shipped, and P86-4 option B turned out to be half-built already
+
+`debcc962` on `dev/maccy-clipboard-parity`, one Mac gate run, no retry:
+**`TESTS OK (124596 checks)`**, zero lines matching `FAIL`, and the `agent-sessions`
+group at 43 checks. The tree before this change gated at 123918, so the delta is +678
+and the new work is 43. The Linux subset went 177 → 220 and reports the same 43.
+
+What the gate does not cover, stated rather than implied: the two new sections were
+never rendered. Placement, bar lengths and the empty states are source readings. The
+rows say `shipped, rendering unverified` for that reason, and D6 stays `needs info`
+because no meaning for it is recorded anywhere in the repository.
+
+**P86-4 option B is smaller than its description.** The "signed privileged helper" the
+operator chose does not have to be built: one already ships. `build.sh` compiles
+`Sources/FanControlHelper/main.swift` into
+`Contents/Library/LaunchServices/com.vorssaint.utils.fan-control`, signs it with a
+Developer ID, stages its plist in `Contents/Library/LaunchDaemons`, and the app
+registers it through `SMAppService.daemon(plistName:)`. It is an `NSXPCListener` with
+`setConnectionCodeSigningRequirement` already set, so the sender is authenticated today.
+Measured on `kooshas-laptop`: the Developer ID identity is present, Xcode is present,
+and the helper's surface is five closed operations with no generic run-this-string
+method. Option B is therefore one added operation on that helper plus a fallback in
+`KeepAwakeManager`, recorded in `docs/P86-4-B-PRIVILEGED-HELPER.md`.
+
+The one step that cannot be done by an agent at a keyboard-less prompt is the live
+check: toggling the preference and reading `pmset -g` and `/etc/sudoers.d` back. It is
+named in that doc as the final step rather than skipped.
+
+D stays 3 / 6 and the tally stays **22 of 27** in the pillar table only because D4 and
+D5 are one lane and the pillar counts closed leaves, not rows; **D is now 5 / 6** with
+D6 the only open row.
