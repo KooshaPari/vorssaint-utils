@@ -511,3 +511,33 @@ What the gate proves: the catalog and transcript read what their tests say they 
 and the two sections are mounted in the agents page with the transcript view unable to
 be handed a session the page did not choose. What it does not prove: anything about how
 the page looks. Nothing was rendered, and no window was opened.
+
+## 2026-11-28 — P86-4 option B: the closed-lid flag through the signed helper
+
+Tree `0acb12fb` on `kooshas-laptop`, one run of `./build.sh --test`, read from
+`/tmp/gate-p86-4b.log`:
+
+```
+  sleep-disable-arguments: OK (3 checks, 0.00s)
+  sleep-disable-wiring: OK (14 checks, 0.00s)
+privileged-sleep: OK (17 checks, 0.00s)
+TESTS OK (124614 checks)
+PREFERENCE CLEANUP TESTS OK
+UNINSTALL SPACES TESTS OK
+DEVELOPER INSTALL ISOLATION TESTS OK
+```
+
+Zero lines containing `FAIL` in the whole log. The previous gate on `d1e6f1dc` was
+124596 checks, so this is +18, and every one of the 18 is accounted for:
+
+| Delta | Source | Why |
+|---|---|---|
+| +17 | `privileged-sleep` | the new group: 3 argument checks, 14 wiring checks, the same 17 the Linux subset reports |
+| +1 | `harness` 419 → 420 | `PreferenceNamespaceTests` adds one check per discovered `Tests/*.swift`, and one test file was added |
+
+What the gate proves: the helper's new operation compiles into the helper binary, the
+app's XPC client compiles against it, and `Sudoers` resolves the client in the test
+build as well as the app build. What it does not prove: that the helper *answers*. That
+needs the daemon registered and approved on this Mac, and it was not exercised — no
+`pmset` was run, no preference was toggled, and the fan-control service was not started.
+`docs/P86-4-B-PRIVILEGED-HELPER.md` states this as unproven rather than done.
