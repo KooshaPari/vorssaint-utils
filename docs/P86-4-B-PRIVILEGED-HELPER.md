@@ -70,3 +70,46 @@ without one.
 
 Not started. The helper surface, the signing identity and the existing registration were
 verified; the code above is a design, not a claim about the tree.
+
+## What was written (2026-11-28)
+
+The design above is now code, in two commits: `71f130f5` (the operation and its client)
+and `65e3ad37` (the wiring and the build).
+
+| Piece | Where |
+|---|---|
+| protocol method | `Sources/Vorssaint/Services/FanControl/FanControlXPC.swift` |
+| helper side | `Sources/FanControlHelper/main.swift`, `private enum SleepDisable` |
+| app side | `Sources/Vorssaint/Services/FanControl/SleepDisableControl.swift` |
+| route | `Sudoers.pmsetDisableSleepOnQueue` and `restoreSleepWithAuthorization`, `Sources/Vorssaint/Services/ShellSupport.swift` |
+| constant arguments | `SudoersSupport.pmsetArguments(disablesleep:)` |
+| checks | `Tests/PrivilegedSleepTests.swift` — `sleep-disable-arguments`, `sleep-disable-wiring` |
+
+Three decisions the design left open, settled while writing it:
+
+1. **The client is deliberately tri-state.** `SleepDisableControl.apply` returns
+   `Bool?`, and `nil` means only "the helper did not answer". That is what makes the
+   fallback honest: an unsigned development build, or a user who has not approved the
+   helper in Login Items, still gets the sudoers path rather than a silent failure.
+2. **The reply is answer-once.** The XPC error handler and the reply block can both
+   fire; the first one wins, so a late error cannot overwrite a real answer and a late
+   answer cannot resurrect a failed call.
+3. **The prompting path got the helper too.** `restoreSleepWithAuthorization` exists for
+   users whose rule is absent and is the path that shows a password dialog. It now asks
+   the helper before showing that dialog, so the improvement is not limited to the
+   quiet path.
+
+Not yet proven: the live toggle on a signed build (needs a human at the Mac, and the
+helper must be approved in Login Items first), and the macOS build itself. The Linux
+subset reports `SUBSET OK (237 checks)`, which exercises the constant arguments and the
+source shape, not the daemon.
+
+## Open question for the operator
+
+Approving the helper's launchd service is a one-time user action in System Settings >
+General > Login Items > Allow in the Background. The app registers it on first fan
+control use (`SMAppService.daemon(plistName:)`), but the user has to approve it before
+any operation reaches the helper. Whether the closed-lid toggle should *also* register
+the helper on first use — so the approval prompt appears when the user is already in the
+app, not later when they are closing the lid — is a product decision, not a technical
+one. It is not registered from the closed-lid path today.
