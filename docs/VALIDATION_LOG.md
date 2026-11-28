@@ -719,3 +719,31 @@ wall-clock deadlines: `ClipboardFeatureTests.swift:2678,2683` ("once the typing 
 So: a deadline assertion on this host measures the other agents, not the code. The gate is only
 authoritative on a quiet machine, and a full run must be taken when the load average is low enough
 to be a statement about the tree.
+
+### Both flake classes fixed, and the same code proven at 60 s and at 598 s
+
+Two of the three load-sensitive assertions are now host-proof rather than hopeful, at `7689a5ce`:
+
+- `ClipboardFeatureTests` reused **one** absolute deadline for two successive polls, so the second
+  loop began with whatever the first had not spent — often nothing. Each poll now has its own
+  30 s budget.
+- `RecorderExportRenderingTests` waited 300 s for its detached probe. It stays bounded at 900 s, so
+  a real deadlock still fails the suite instead of hanging the gate.
+
+Measured on the same Mac, same commit, while the load average sat between **85 and 390**:
+
+| suite | quiet host (`10:22`) | loaded, run 1 | loaded, run 2 |
+|---|---|---|---|
+| clipboard | 2.13 s | **OK** 2.55 s | **OK** 21.16 s |
+| recorder | 59.87 s | **OK** 597.79 s | **OK** 532.60 s |
+| switcher | failed 13.03 s | **OK** (13.88 s, 13.23 s) | **OK** 10.28 s |
+
+The recorder suite is the clearest instrument: identical code, identical checks (1353), **60 s on a
+quiet host and 532–598 s under load**, green both times because the budget now exceeds the
+environment rather than the other way round.
+
+A full gate run is deliberately **not** claimed at this commit. The host was carrying
+`git reset --hard --no-recurse-submodules` at 90 % CPU with `fseventsd` at 49 % and `mds` indexing
+(load average 348–391, for another lane's repository — not this one and not this session's work),
+and under that pressure a 124635-check run measures the contention. The last authoritative full run
+is `0ca6a5ac` (124635 checks, 1 failure, since fixed); the next one must be taken on a quiet host.
