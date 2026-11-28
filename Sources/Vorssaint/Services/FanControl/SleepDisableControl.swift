@@ -21,6 +21,14 @@ enum SleepDisableControl {
     /// because a wedged helper must not hang a preference toggle forever.
     static let timeout: DispatchTimeInterval = .seconds(5)
 
+    /// Registers the helper so a write can reach it. SMAppService needs the
+    /// bundle, so the app injects this at launch rather than this file naming
+    /// the fan service: the narrow test harness compiles this file and has no
+    /// fan service, and a registration that cannot be compiled cannot be
+    /// checked. Optional because a build that never sets it still writes the
+    /// flag through the sudo rule.
+    static var ensureRegistered: (() -> Void)?
+
     static func apply(_ on: Bool) -> Bool? {
         let connection = NSXPCConnection(machServiceName: FanControlIdentifiers.helperID,
                                          options: .privileged)

@@ -850,8 +850,9 @@ final class KeepAwakeManager: ObservableObject {
         // The helper is the only route that needs no standing grant. Register it
         // on the first closed-lid request, so the override stops depending on the
         // passwordless rule being installed; a pending approval still falls back
-        // to that rule, which is why this is not awaited.
-        FanControlService.ensureHelperForSleepControl()
+        // to that rule, which is why this is not awaited. Injected, not named:
+        // the test harness compiles this body without the fan service.
+        SleepDisableControl.ensureRegistered?()
         Sudoers.pmsetDisableSleep(true) { ok in
             DispatchQueue.main.async {
                 guard !self.isTerminating, self.clamshellOperationGeneration == generation else { return }

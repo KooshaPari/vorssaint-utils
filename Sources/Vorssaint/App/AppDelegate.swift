@@ -171,9 +171,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             KeepAwakeManager.shared.activateOnLaunchIfNeeded()
         }
         FanControlService.recoverIfNeeded()
+        // The closed-lid override needs the same privileged helper as the fan
+        // controls, and it needs it when the user asks for the override rather
+        // than when they open a fan surface. The hook is injected here because
+        // the manager's enable path is compiled by the narrow test harness,
+        // which has no fan service.
+        SleepDisableControl.ensureRegistered = { FanControlService.ensureHelperForSleepControl() }
         // A recorded override means the machine is still not sleeping. Register
-        // the helper that can lift it without a password, so a relaunch after an
-        // update or a refused approval still leaves a working restore path.
+        // now as well, so a relaunch after an update or a refused approval still
+        // leaves a working restore path without a further toggle.
         if UserDefaults.standard.bool(forKey: DefaultsKey.sleepDisabledFlag) {
             FanControlService.ensureHelperForSleepControl()
         }

@@ -93,22 +93,36 @@ enum PrivilegedSleepTests {
                          "it never opens System Settings on its own, so a toggle stays silent")
 
             guard let keepAwake = sourceText("Sources/Vorssaint/Services/KeepAwakeManager.swift"),
-                  let registration = keepAwake.range(of: "FanControlService.ensureHelperForSleepControl()"),
+                  let call = keepAwake.range(of: "SleepDisableControl.ensureRegistered?()"),
                   let enable = keepAwake.range(of: "Sudoers.pmsetDisableSleep(true)") else {
-                suite.expect(false, "the closed-lid enable path calls it and still writes the flag")
+                suite.expect(false, "the closed-lid enable path calls the hook and still writes the flag")
                 return
             }
-            suite.expect(registration.lowerBound < enable.lowerBound,
+            suite.expect(call.lowerBound < enable.lowerBound,
                          "the helper is registered before the flag is written")
-            suite.expect(occurrences(of: "ensureHelperForSleepControl()", in: keepAwake) == 1,
+            suite.expect(occurrences(of: "ensureRegistered?()", in: keepAwake) == 1,
                          "the enable path registers exactly once")
+            // The hook exists because this file is compiled by the narrow gate
+            // without the fan service. If the hook were named directly here the
+            // gate could not compile, so the seam itself is the invariant.
+            suite.expect(!keepAwake.contains("FanControlService"),
+                         "the extracted enable path never names the fan service")
+
+            guard let control = sourceText("Sources/Vorssaint/Services/FanControl/SleepDisableControl.swift") else {
+                suite.expect(false, "the sleep control is readable")
+                return
+            }
+            suite.expect(control.contains("static var ensureRegistered: (() -> Void)?"),
+                         "the hook is declared by the component the gate compiles")
 
             guard let delegate = sourceText("Sources/Vorssaint/App/AppDelegate.swift") else {
                 suite.expect(false, "the launch path is readable")
                 return
             }
+            suite.expect(delegate.contains("SleepDisableControl.ensureRegistered = { FanControlService.ensureHelperForSleepControl() }"),
+                         "the app injects the registration at launch")
             suite.expect(delegate.contains("UserDefaults.standard.bool(forKey: DefaultsKey.sleepDisabledFlag)"),
-                         "the launch path only registers while an override is on record")
+                         "the launch path only re-registers while an override is on record")
             suite.expect(delegate.contains("FanControlService.ensureHelperForSleepControl()"),
                          "the launch path re-registers for the restore")
         }

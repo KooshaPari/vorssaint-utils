@@ -1971,7 +1971,9 @@ enum RepositoryFeatureTests {
                "the API route still submits with the decoded key file")
         // Key material must never be printed, and the decoded copy must not
         // outlive the run.
-        suite.expect(!notarizeCode.contains { $0.contains("echo") && $0.contains("NOTARY_API_KEY_P8") },
+        suite.expect(!notarize.components(separatedBy: "\n").contains {
+            $0.contains("echo") && $0.contains("NOTARY_API_KEY_P8")
+        },
                "notarize.sh never echoes the API key value")
         suite.expect(notarizeCode.contains("trap"),
                "notarize.sh removes its temporary key material on exit")
@@ -1981,9 +1983,9 @@ enum RepositoryFeatureTests {
         // error, and a cask pointing at an unsigned DMG fails with a Gatekeeper
         // refusal. Both are avoidable by deriving the fields from the DMG and
         // naming the release asset, so the generator is where that is enforced.
-        let cask = (try? String(contentsOfFile: "Tools/make-cask.sh", encoding: .utf8)) ?? ""
-        suite.expect(!cask.isEmpty, "the cask generator reads back for its shape check")
-        let caskCode = cask.components(separatedBy: "\n")
+        let caskScript = (try? String(contentsOfFile: "Tools/make-cask.sh", encoding: .utf8)) ?? ""
+        suite.expect(!caskScript.isEmpty, "the cask generator reads back for its shape check")
+        let caskCode = caskScript.components(separatedBy: "\n")
             .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
             .joined(separator: "\n")
         suite.expect(caskCode.contains("shasum -a 256"),
