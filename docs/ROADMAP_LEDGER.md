@@ -1135,6 +1135,4 @@ The one step that cannot be done by an agent at a keyboard-less prompt is the li
 check: toggling the preference and reading `pmset -g` and `/etc/sudoers.d` back. It is
 named in that doc as the final step rather than skipped.
 
-D stays 3 / 6 and the tally stays **22 of 27** in the pillar table only because D4 and
-D5 are one lane and the pillar counts closed leaves, not rows; **D is now 5 / 6** with
-D6 the only open row.
+**D is now 5 of 6**, with D6 the only open row, and the tally becomes **24 of 27**.
