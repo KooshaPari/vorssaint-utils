@@ -99,10 +99,17 @@ Three decisions the design left open, settled while writing it:
    the helper before showing that dialog, so the improvement is not limited to the
    quiet path.
 
-Not yet proven: the live toggle on a signed build (needs a human at the Mac, and the
-helper must be approved in Login Items first), and the macOS build itself. The Linux
-subset reports `SUBSET OK (237 checks)`, which exercises the constant arguments and the
-source shape, not the daemon.
+Proven by the gate: the macOS build. One run on `0acb12fb` reported
+`TESTS OK (124614 checks)` with zero `FAIL` and `privileged-sleep: OK (17 checks)`, so
+the operation compiles into the helper binary and the client links in both the app and
+test builds. The Linux subset reports `SUBSET OK (237 checks)` for the constant
+arguments and the source shape.
+
+Not proven: that the helper *answers*. Nothing in that run touched `pmset`, the
+preference or the fan-control service, and the daemon has to be registered and approved
+in Login Items before an operation reaches it. So the fallback path is what a fresh
+user will actually get until the live toggle is exercised on a signed build with a
+human at the machine.
 
 ## Open question for the operator
 
