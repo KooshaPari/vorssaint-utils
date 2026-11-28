@@ -222,7 +222,7 @@ struct NotchAgentsSessionsSection: View {
                                 HStack(alignment: .top, spacing: 6) {
                                     Image(systemName: line.isUser ? "person.fill" : "sparkles")
                                         .font(.caption2)
-                                        .foregroundStyle(line.isUser ? .secondary : .accentColor)
+                                        .foregroundStyle(line.isUser ? Color.secondary : Color.accentColor)
                                         .frame(width: 12)
                                     Text(line.text)
                                         .font(.caption)
