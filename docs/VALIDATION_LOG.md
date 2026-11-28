@@ -618,3 +618,20 @@ identity. Infisical is installed and logged in (`v0.44.15`, `kooshapari@gmail.co
 cached project backups under `~/.infisical/secrets-backup/` contain **no** key whose name matches
 `NOTARY`, `APPLE` or `ASC_`. So the three values are not on this Mac in any place an agent may
 read, and `Tools/notarize.sh` will not run without all three.
+
+### CI did not start on the PR, so the local build stays the authority
+
+PR #3 was opened at `fcbb380d` to get the 150 commits past `origin/main` verified: `ci.yml`
+triggers on `push: [main]` and on `pull_request`, and nothing had triggered since `736cf441` on
+2026-11-21. The PR ran the third-party checks — SonarCloud, Socket, CodeRabbit, Macroscope,
+Kilo, semgrep — and **no `CI` workflow run was created at all**, not even a failed one:
+`/actions/runs` still ends at the 11-21 push. The workflow is `active`, contains no edit in
+these 150 commits (`git log origin/main..HEAD -- .github/` is empty), and the same file ran
+green on that push. Actions is enabled for the repo, which is public, and other repos in this
+account ran workflows the same hour. `gh run list` and the repo-level runs API agree: nothing
+queued.
+
+That is an infrastructure fact, not a verdict on the code, and per the standing CI-billing
+policy it is not treated as a failure. The equivalent check was run locally instead:
+`./build.sh` to a clean release compile and a signed, verified bundle (above). If the workflow
+starts later, it re-tests the same tree; until then this log's local evidence is what exists.
