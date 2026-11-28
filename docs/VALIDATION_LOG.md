@@ -475,3 +475,39 @@ The merged tree therefore holds the two candidate figures stated in the D2 row:
 67933.
 
 
+## 2026-11-28 — D4/D5 agent session preview and spend breakdown
+
+Same procedure as above: `bash Tests/LinuxSubsetCheck.sh` on nixos for the structural
+pass, then one batched `./build.sh --test` on kooshas-laptop for the gate.
+
+Linux subset, full tail:
+
+```text
+agent-session-catalog: OK (13 checks, 0.03s)
+agent-transcript: OK (17 checks, 2.06s)
+agent-session-source-rules: OK (4 checks, 0.00s)
+agent-insights-wiring: OK (9 checks, 0.00s)
+SUBSET OK (220 checks) — not the release gate
+```
+
+The subset was 177 checks before this change.
+
+Mac gate on `kooshas-laptop` (arm64), `./build.sh --test`, one run, no retry:
+
+```text
+  agent-session-source-rules: OK (4 checks, 0.00s)
+  agent-insights-wiring: OK (9 checks, 0.00s)
+agent-sessions: OK (43 checks, 0.99s)
+TESTS OK (124596 checks)
+PREFERENCE CLEANUP TESTS OK
+UNINSTALL SPACES TESTS OK
+DEVELOPER INSTALL ISOLATION TESTS OK
+```
+
+Zero lines containing `FAIL` in the whole log. The full suite was 123918 checks on
+`df491e0a`, so this is +678 checks and the new work is 43 of them.
+
+What the gate proves: the catalog and transcript read what their tests say they read,
+and the two sections are mounted in the agents page with the transcript view unable to
+be handed a session the page did not choose. What it does not prove: anything about how
+the page looks. Nothing was rendered, and no window was opened.
