@@ -19,8 +19,12 @@
 set -u
 
 REPO="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-OUT="${TMPDIR:-/tmp}/vorssaint-linux-subset"
-mkdir -p "$OUT"
+# A per-invocation scratch dir. A fixed path made two concurrent runs collide:
+# one wrote TestSuiteSubset.swift while the other compiled it, and swiftc
+# reported "input file ... was modified during the build" as exit 2, which
+# reads exactly like a real subset build failure.
+OUT="$(mktemp -d "${TMPDIR:-/tmp}/vorssaint-linux-subset.XXXXXX")" || exit 2
+trap 'rm -rf "$OUT"' EXIT
 
 SUITES=(Tests/ComputeMeshTests.swift Tests/SMBSharesTests.swift Tests/NowPlayingBridgeTests.swift Tests/HIDEventSystemShimTests.swift Tests/ClipboardHistoryAtRestTests.swift Tests/AgentSessionCatalogTests.swift Tests/PrivilegedSleepTests.swift)
 SOURCES=(

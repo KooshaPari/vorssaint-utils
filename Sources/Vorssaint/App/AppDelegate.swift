@@ -171,6 +171,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             KeepAwakeManager.shared.activateOnLaunchIfNeeded()
         }
         FanControlService.recoverIfNeeded()
+        // A recorded override means the machine is still not sleeping. Register
+        // the helper that can lift it without a password, so a relaunch after an
+        // update or a refused approval still leaves a working restore path.
+        if UserDefaults.standard.bool(forKey: DefaultsKey.sleepDisabledFlag) {
+            FanControlService.ensureHelperForSleepControl()
+        }
         SpacesOrderHold.recoverIfNeeded()
         // One binding per feature: only available features are touched, so a
         // feature switched off in the hub never even instantiates here.

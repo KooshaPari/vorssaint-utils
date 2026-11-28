@@ -54,6 +54,39 @@ final class FanControlService: ObservableObject {
         refreshAccessState()
     }
 
+    /// Registers the helper for the closed-lid override, which asks the same
+    /// privileged daemon the fan controls use. Called when the override is
+    /// first requested and again at launch while an override is still on
+    /// record, so the restore path does not depend on the passwordless rule.
+    ///
+    /// Registration only: it never opens System Settings and never asks for
+    /// anything. An approval still pending is the user's step, and the sleep
+    /// path keeps its passwordless fallback for that window. Returns true only
+    /// when the helper can be reached right after registering.
+    @discardableResult
+    static func ensureHelperForSleepControl() -> Bool {
+        if !Thread.isMainThread {
+            var ready = false
+            DispatchQueue.main.sync { ready = ensureHelperForSleepControl() }
+            return ready
+        }
+        let service = shared
+        service.refreshAccessState()
+        guard service.accessState == .notRegistered else { return false }
+        do {
+            try appService.register()
+            UserDefaults.standard.set(helperVersion, forKey: DefaultsKey.fanControlHelperVersion)
+            service.refreshAccessState()
+            let ready = service.accessState == .enabled
+            Self.log.notice("Registered the helper for the closed-lid override (reachable: \(ready ? "yes" : "no", privacy: .public))")
+            return ready
+        } catch {
+            service.refreshAccessState()
+            Self.log.error("Registering the helper for the closed-lid override failed: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
     deinit {
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         connection?.invalidate()

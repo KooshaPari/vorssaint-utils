@@ -847,6 +847,11 @@ final class KeepAwakeManager: ObservableObject {
         // Persist before submitting the write: quitting or crashing before
         // its reply must not leave an unrecorded system-wide sleep override.
         UserDefaults.standard.set(true, forKey: DefaultsKey.sleepDisabledFlag)
+        // The helper is the only route that needs no standing grant. Register it
+        // on the first closed-lid request, so the override stops depending on the
+        // passwordless rule being installed; a pending approval still falls back
+        // to that rule, which is why this is not awaited.
+        FanControlService.ensureHelperForSleepControl()
         Sudoers.pmsetDisableSleep(true) { ok in
             DispatchQueue.main.async {
                 guard !self.isTerminating, self.clamshellOperationGeneration == generation else { return }

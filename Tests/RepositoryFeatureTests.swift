@@ -1950,6 +1950,51 @@ enum RepositoryFeatureTests {
         suite.expect(!signingSetupCode.contains("-legacy"),
                "setup-signing.sh avoids the -legacy flag the stock LibreSSL openssl rejects")
 
+        // MARK: Notarization offers a route a human can set up in one command
+        // The three-value API route is the only one this script used to accept,
+        // and it needs material that lives nowhere on a build host, so F1 was
+        // blocked with no way to ask what was missing. A stored keychain profile
+        // is the route a person at a logged-in GUI session can create, and
+        // --preflight is what makes the blockage answerable in one command.
+        let notarize = (try? String(contentsOfFile: "Tools/notarize.sh", encoding: .utf8)) ?? ""
+        suite.expect(!notarize.isEmpty, "the notarize script reads back for its shape check")
+        let notarizeCode = notarize.components(separatedBy: "\n")
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
+            .joined(separator: "\n")
+        suite.expect(notarizeCode.contains("NOTARY_PROFILE")
+                && notarizeCode.contains("--keychain-profile"),
+               "notarize.sh accepts a stored keychain profile, not only the three API values")
+        suite.expect(notarizeCode.contains("--preflight")
+                && notarizeCode.contains("return 2"),
+               "notarize.sh --preflight reports an unusable credential state as needs-a-human")
+        suite.expect(notarizeCode.contains("--key \"$P8\""),
+               "the API route still submits with the decoded key file")
+        // Key material must never be printed, and the decoded copy must not
+        // outlive the run.
+        suite.expect(!notarizeCode.contains { $0.contains("echo") && $0.contains("NOTARY_API_KEY_P8") },
+               "notarize.sh never echoes the API key value")
+        suite.expect(notarizeCode.contains("trap"),
+               "notarize.sh removes its temporary key material on exit")
+
+        // MARK: The cask is generated from the artifact, never hand-filled
+        // A cask with a copied checksum fails `brew install` with a checksum
+        // error, and a cask pointing at an unsigned DMG fails with a Gatekeeper
+        // refusal. Both are avoidable by deriving the fields from the DMG and
+        // naming the release asset, so the generator is where that is enforced.
+        let cask = (try? String(contentsOfFile: "Tools/make-cask.sh", encoding: .utf8)) ?? ""
+        suite.expect(!cask.isEmpty, "the cask generator reads back for its shape check")
+        let caskCode = cask.components(separatedBy: "\n")
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
+            .joined(separator: "\n")
+        suite.expect(caskCode.contains("shasum -a 256"),
+               "the checksum is computed from the DMG in front of it")
+        suite.expect(caskCode.contains("CFBundleShortVersionString"),
+               "the version is read from the built bundle, not typed in")
+        suite.expect(caskCode.contains("releases/download/v#{version}"),
+               "the URL is the GitHub release asset path, which is where a notarized DMG lives")
+        suite.expect(caskCode.contains("CFBundleIdentifier"),
+               "the zap list is derived from the real bundle id")
+
         // MARK: The stable identity is judged by whether codesign can sign with it
         // A find-identity listing names certificates codesign then rejects, and
         // -v excludes every self-signed one, so neither spelling may decide.

@@ -75,6 +75,43 @@ enum PrivilegedSleepTests {
             suite.expect(client.contains("guard reply.wait(timeout: timeout) else { return nil }"),
                          "an unanswered call degrades to the fallback instead of hanging")
         }
+
+        suite.run("sleep-disable-registration") {
+            guard let service = sourceText("Sources/Vorssaint/Services/FanControl/FanControlService.swift"),
+                  let register = service.range(of: "static func ensureHelperForSleepControl()") else {
+                suite.expect(false, "the registration entry point exists")
+                return
+            }
+            let tail = String(service[register.upperBound...])
+            let bodyEnd = tail.range(of: "\n    }")?.lowerBound ?? tail.endIndex
+            let body = String(tail[..<bodyEnd])
+            suite.expect(body.contains("guard service.accessState == .notRegistered"),
+                         "it registers only from the unregistered state, so it never rewrites a decision")
+            suite.expect(body.contains("try appService.register()"),
+                         "it registers the daemon through SMAppService")
+            suite.expect(!body.contains("openSystemSettingsLoginItems"),
+                         "it never opens System Settings on its own, so a toggle stays silent")
+
+            guard let keepAwake = sourceText("Sources/Vorssaint/Services/KeepAwakeManager.swift"),
+                  let registration = keepAwake.range(of: "FanControlService.ensureHelperForSleepControl()"),
+                  let enable = keepAwake.range(of: "Sudoers.pmsetDisableSleep(true)") else {
+                suite.expect(false, "the closed-lid enable path calls it and still writes the flag")
+                return
+            }
+            suite.expect(registration.lowerBound < enable.lowerBound,
+                         "the helper is registered before the flag is written")
+            suite.expect(occurrences(of: "ensureHelperForSleepControl()", in: keepAwake) == 1,
+                         "the enable path registers exactly once")
+
+            guard let delegate = sourceText("Sources/Vorssaint/App/AppDelegate.swift") else {
+                suite.expect(false, "the launch path is readable")
+                return
+            }
+            suite.expect(delegate.contains("UserDefaults.standard.bool(forKey: DefaultsKey.sleepDisabledFlag)"),
+                         "the launch path only registers while an override is on record")
+            suite.expect(delegate.contains("FanControlService.ensureHelperForSleepControl()"),
+                         "the launch path re-registers for the restore")
+        }
     }
 
     private static func occurrences(of needle: String, in haystack: String) -> Int {
