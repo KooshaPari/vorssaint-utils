@@ -541,3 +541,80 @@ build as well as the app build. What it does not prove: that the helper *answers
 needs the daemon registered and approved on this Mac, and it was not exercised — no
 `pmset` was run, no preference was toggled, and the fan-control service was not started.
 `docs/P86-4-B-PRIVILEGED-HELPER.md` states this as unproven rather than done.
+
+## 2026-11-28 — the test gate does not compile the app, and HEAD did not compile
+
+Found while producing the F1 artifact, not by a test. `./build.sh` (the full app build) on
+`kooshas-laptop` at `03a9463f`:
+
+```
+Sources/Vorssaint/UI/Settings/NotchAgentsInsights.swift:225:86: error:
+  type 'HierarchicalShapeStyle' has no member 'accentColor'
+EXIT=1
+```
+
+The line was `.foregroundStyle(line.isUser ? .secondary : .accentColor)`, added by `6afcc8a5`.
+A ternary needs both branches to be one type, and there the expected type is a
+`ShapeStyle`, which has `secondary` but no `accentColor`. `6d9aaeac` names `Color.` on both
+branches, which keeps the rendering and compiles.
+
+**The gate passed the whole time.** `TESTS OK (124614 checks)` at `0acb12fb` is a true
+statement about `TEST_SOURCES`, and `TEST_SOURCES` is an explicit list (`build.sh:269`) that
+contains no `UI/` file this screen compiles, so the test build never saw the error. The
+`--test` branch runs `generate_sources.py`, compiles that list with `swiftc`, runs the
+binaries, and `exit`s at `build.sh:669`; the app compile starts at `build.sh:672`.
+
+| Claim | What actually proves it |
+|---|---|
+| the test suite passes | `./build.sh --test` |
+| the app compiles | `./build.sh`, `▸ Compiling (release) against MacOSX26.sdk…` with no `error:` |
+| the bundle is signed and packaged | `./build.sh` to `✓ Bundle ready`, then `Tools/make-dmg.sh` |
+
+The release compile of the fixed tree is the evidence for `6d9aaeac`: `grep -c "error:"` on
+`/tmp/f1-build.log` is `0`, and the build then failed only at signing (`errSecInternalComponent`,
+below), which is after compilation. So the compile fix is verified by a real app compile, and
+the app-target compile is now a step that has to be run rather than assumed.
+
+### The package chain runs, to the notary boundary
+
+`VORSSAINT_SKIP_DEVELOPER_ID=1 ./build.sh` on the same tree, then `Tools/make-dmg.sh`:
+
+```
+✓ Bundle ready: build/stage/Vorssaint.app
+✓ DMG ready: dist/Vorssaint-3.4.4.dmg
+
+build/stage/Vorssaint.app: valid on disk
+build/stage/Vorssaint.app: satisfies its Designated Requirement
+Authority=Vorssaint Utils Signing   TeamIdentifier=not set   flags=0x0(none)
+spctl -a -vvv -t exec build/stage/Vorssaint.app  ->  rejected
+dist/Vorssaint-3.4.4.dmg   53464 blocks   sha256 485c50a31eece64c…
+```
+
+Signed with the local identity, so no hardened runtime and no Team ID: `spctl` rejecting it is
+the correct answer, not a defect. What this proves is that compile → bundle → nested helpers →
+icon → styled DMG all work and the artifact chain has no gap of its own. What it does not prove
+is anything about notarisation.
+
+Without `VORSSAINT_SKIP_DEVELOPER_ID=1` the same build fails at signing, three retries:
+
+```
+Developer ID signing failed; retrying (3/3)
+.../Vorssaint.app/Contents/Library/LaunchServices/com.vorssaint.utils.fan-control: errSecInternalComponent
+EXIT=1
+```
+
+`build.sh:70-78` already documents why: a build outside the GUI session cannot use the login
+keychain's Developer ID key. That makes the Developer ID build a step only the operator can run,
+by running `./build.sh` in a Terminal window on the Mac.
+
+### Notary credentials: searched, not assumed
+
+Enumerated on the Mac without reading any value: no `NOTARY_*`, `APPLE_ID` or `ASC_*` in the
+environment; no `AuthKey_*.p8` in `~/.appstoreconnect/private_keys`, `~/private_keys`,
+`~/.private_keys`, `~/Downloads` or `~/Documents`; `xcrun notarytool` 1.1.0 present but no
+stored profile (`security find-generic-password` absent for `vorssaint`, `AC_PASSWORD`,
+`notary`, `vorssaint-notary`); `security find-identity` does show the Developer ID Application
+identity. Infisical is installed and logged in (`v0.44.15`, `kooshapari@gmail.com`), and its 10
+cached project backups under `~/.infisical/secrets-backup/` contain **no** key whose name matches
+`NOTARY`, `APPLE` or `ASC_`. So the three values are not on this Mac in any place an agent may
+read, and `Tools/notarize.sh` will not run without all three.
