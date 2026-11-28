@@ -992,6 +992,14 @@ commit minutes later it took 54.94 s and passed. A wall-clock deadline on a shar
 detector, not a correctness test, and the number to watch is the suite duration in the log, which is
 printed either way.
 
+**2026-11-28:** that is now the general rule rather than one observation. Three more deadlines were
+found by running the gate on a host at load average 84-390 — `SwitcherScrollTests` `settle()` at
+0.5 s, a clipboard deferred pass sharing one absolute deadline between two polls, and a 300 s
+export probe. All three are fixed (`c6007bc4`, `7689a5ce`) and each was re-measured twice under
+that same load; the recorder suite ran 532-598 s loaded against 60 s quiet with identical checks,
+green both ways. Detail and the durations table: `docs/VALIDATION_LOG.md`. A full 124635-check run
+is only meaningful on a quiet host, so the last authoritative one stays `0ca6a5ac`.
+
 ## P86-2 closed: six private symbols now resolve or withdraw
 
 **`2560553e`, gate `TESTS OK (124511 checks)`, 0 failure markers, all three shell suites OK.**
