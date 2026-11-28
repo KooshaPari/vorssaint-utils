@@ -22,7 +22,7 @@ REPO="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 OUT="${TMPDIR:-/tmp}/vorssaint-linux-subset"
 mkdir -p "$OUT"
 
-SUITES=(Tests/ComputeMeshTests.swift Tests/SMBSharesTests.swift Tests/NowPlayingBridgeTests.swift Tests/HIDEventSystemShimTests.swift Tests/ClipboardHistoryAtRestTests.swift Tests/AgentSessionCatalogTests.swift)
+SUITES=(Tests/ComputeMeshTests.swift Tests/SMBSharesTests.swift Tests/NowPlayingBridgeTests.swift Tests/HIDEventSystemShimTests.swift Tests/ClipboardHistoryAtRestTests.swift Tests/AgentSessionCatalogTests.swift Tests/PrivilegedSleepTests.swift)
 SOURCES=(
     Sources/Vorssaint/Services/Mesh/ComputeMeshSupport.swift
     Sources/Vorssaint/Services/Mesh/ComputeMeshService.swift
@@ -33,6 +33,7 @@ SOURCES=(
     Sources/Vorssaint/Services/Clipboard/ClipboardHistoryEnvelope.swift
     Sources/Vorssaint/Services/Clipboard/ClipboardHistoryCipher.swift
     Sources/Vorssaint/Services/AgentUsage/AgentSessionCatalog.swift
+    Sources/Vorssaint/Services/SudoersSupport.swift
 )
 
 cd "$REPO" || exit 2
@@ -99,6 +100,7 @@ NowPlayingBridgeTests.run(suite)
 HIDEventSystemShimTests.run(suite)
 ClipboardHistoryAtRestTests.run(suite)
 AgentSessionCatalogTests.run(suite)
+PrivilegedSleepTests.run(suite)
 suite.finish()
 SWIFT
 

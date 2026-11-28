@@ -17,4 +17,11 @@ enum SudoersSupport {
     static func clamshellRule(uid: uid_t) -> String {
         "#\(uid) ALL=(root) NOPASSWD: /usr/bin/pmset disablesleep 1, /usr/bin/pmset disablesleep 0"
     }
+
+    /// The exact `pmset` arguments for the closed-lid flag. Two constant
+    /// strings after the subcommand: the helper never builds an argument from
+    /// caller text, and neither does the sudo fallback.
+    static func pmsetArguments(disablesleep on: Bool) -> [String] {
+        ["disablesleep", on ? "1" : "0"]
+    }
 }

@@ -553,6 +553,36 @@ private final class FanControlSession: NSObject, FanControlXPCProtocol {
     func restoreAutomatic(withReply reply: @escaping (Data) -> Void) {
         controller.restore(reply: reply)
     }
+
+    func setDisablesleep(_ enabled: Bool, withReply reply: @escaping (Data) -> Void) {
+        reply(FanControlIPC.encode(SleepDisable.apply(enabled)
+            ? .success(.empty)
+            : .failure(.controlFailed)))
+    }
+}
+
+/// The closed-lid flag, which needs root. Runs one absolute binary with two
+/// constant arguments: no shell, no `PATH` lookup, and nothing the caller can
+/// shape beyond the bit it passes. There is deliberately no general "run this"
+/// operation on the helper — such a method would remove the reason the sender
+/// check exists.
+private enum SleepDisable {
+    static let executable = "/usr/bin/pmset"
+
+    static func apply(_ on: Bool) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = SudoersSupport.pmsetArguments(disablesleep: on)
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return false
+        }
+        process.waitUntilExit()
+        return process.terminationStatus == 0
+    }
 }
 
 private final class FanControlListenerDelegate: NSObject, NSXPCListenerDelegate {

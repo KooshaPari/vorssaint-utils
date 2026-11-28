@@ -221,6 +221,13 @@ enum Sudoers {
                 finish(true)
                 return
             }
+            // The helper needs no rule and no password, so ask it before
+            // prompting. Reaching this at all now means the helper did not
+            // answer, but it may have come back between the two calls.
+            if let helped = SleepDisableControl.apply(false) {
+                finish(helped)
+                return
+            }
             DispatchQueue.main.async {
                 guard shouldProceed() else {
                     finish(false)
@@ -232,7 +239,12 @@ enum Sudoers {
     }
 
     private static func pmsetDisableSleepOnQueue(_ on: Bool) -> Bool {
-        Shell.run("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "disablesleep", on ? "1" : "0"]).status == 0
+        // The signed helper first. It authenticates this app by code signature
+        // and needs no standing grant, so when it answers there is nothing to
+        // fall back to and nothing to ask the user for.
+        if let helped = SleepDisableControl.apply(on) { return helped }
+        return Shell.run("/usr/bin/sudo",
+                         ["-n", "/usr/bin/pmset"] + SudoersSupport.pmsetArguments(disablesleep: on)).status == 0
     }
 }
 

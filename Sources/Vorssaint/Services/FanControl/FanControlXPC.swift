@@ -78,6 +78,10 @@ enum FanControlIdentifiers {
     func startMaximumCooling(withReply reply: @escaping (Data) -> Void)
     func applyConfiguration(_ configuration: Data, withReply reply: @escaping (Data) -> Void)
     func heartbeat(withReply reply: @escaping (Data) -> Void)
+    /// The closed-lid preference. The only privileged operation whose input is
+    /// caller-supplied, and its input is one bit: the helper decides the
+    /// argument, never the caller.
+    func setDisablesleep(_ enabled: Bool, withReply reply: @escaping (Data) -> Void)
     func restoreAutomatic(withReply reply: @escaping (Data) -> Void)
 }
 

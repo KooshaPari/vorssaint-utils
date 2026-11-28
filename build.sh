@@ -594,6 +594,8 @@ if (( TEST )); then
         Sources/Vorssaint/Services/BoundedProcessRunner.swift
         Sources/Vorssaint/Services/DetachedProcess.swift
         Sources/Vorssaint/Services/ShellSupport.swift
+        Sources/Vorssaint/Services/FanControl/FanControlXPC.swift
+        Sources/Vorssaint/Services/FanControl/SleepDisableControl.swift
         Sources/Vorssaint/Services/PortManager/PortManagerSupport.swift
         Sources/Vorssaint/Services/Metrics/NetworkProcessSupport.swift
         Sources/Vorssaint/Services/Metrics/NetworkSampler.swift
@@ -699,6 +701,7 @@ swiftc -O -target "$TARGET" -sdk "$SDK" "${SDK_COMPAT_FLAGS[@]}" "${BUILD_VARIAN
     Sources/Vorssaint/Services/SystemMonitor/SMCClient.swift \
     Sources/Vorssaint/Services/Metrics/TemperatureSensorSelector.swift \
     Sources/Vorssaint/Services/FanControl/FanControlHardware.swift \
+    Sources/Vorssaint/Services/SudoersSupport.swift \
     Sources/FanControlHelper/main.swift \
     -o "build/$FAN_HELPER_ID"
 "build/$FAN_HELPER_ID" --selftest

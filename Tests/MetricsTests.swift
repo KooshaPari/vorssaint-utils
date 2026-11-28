@@ -42,6 +42,9 @@ struct MetricsTests {
             ("agent-sessions", {
                 AgentSessionCatalogTests.run(suite)
             }),
+            ("privileged-sleep", {
+                PrivilegedSleepTests.run(suite)
+            }),
             ("pointer-input", {
                 PointerOnDisplayContract.run(suite)
                 PointerInputFeatureTests.run(suite)
