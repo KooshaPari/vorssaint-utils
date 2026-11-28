@@ -635,3 +635,57 @@ That is an infrastructure fact, not a verdict on the code, and per the standing 
 policy it is not treated as a failure. The equivalent check was run locally instead:
 `./build.sh` to a clean release compile and a signed, verified bundle (above). If the workflow
 starts later, it re-tests the same tree; until then this log's local evidence is what exists.
+
+## 2026-11-28 — the sleep helper is registered on demand, and the gate compiles again
+
+### What broke, and why it was structural
+
+The wiring commit named `FanControlService.ensureHelperForSleepControl()` from
+`KeepAwakeManager.enableClamshell()`. The app compiles `Sources/Vorssaint/**/*.swift`, so that is
+valid there. The **gate does not**: `Tests/generate_sources.py` copies that method's body verbatim
+into `build/generated-tests/`, and `FanControlService.swift` is not in the build's `TEST_SOURCES`
+(it would pull in `FanControlHardware`, `SMCClient` and `TemperatureSelector` behind it). The
+result was `KeepAwakeManager.swift:854:9: error: cannot find 'FanControlService' in scope` — a
+compile error in the gate only, found by the gate and not by any structural check.
+
+Two smaller faults from the same commit: `String.contains` was used with a trailing closure
+(`type '(_) -> Bool' cannot conform to 'StringProtocol'`), and the cask assertions declared a
+second `let cask` in a scope that already had one (`invalid redeclaration of 'cask'`).
+
+### The fix: an injected hook rather than a named dependency
+
+`SleepDisableControl` — gate-compiled, and the component whose job is the closed-lid flag —
+now declares `static var ensureRegistered: (() -> Void)?`. `AppDelegate` injects
+`{ FanControlService.ensureHelperForSleepControl() }` at launch, and the enable path calls the
+hook. The extracted body names only the hook, so the harness compiles it, and the app still
+registers the helper exactly when a closed-lid request arrives. Launch re-registration for a
+recorded override is unchanged.
+
+The structural gate states the invariant directly: `sleep-disable-registration` is now 10 checks,
+including "the extracted enable path never names the fan service" and "the hook is declared by the
+component the gate compiles".
+
+### Evidence
+
+- `Tests/LinuxSubsetCheck.sh` on `[nixos]`: **SUBSET OK (247 checks)** — up from 244.
+- `./build.sh --test` on `kooshas-laptop` (`100.112.14.98`), commit `0ca6a5ac`: **compiled clean,
+  124635 checks, 1 failure** — `Tests/SwitcherScrollTests.swift:166`, an animated-scroll
+  assertion inside a `settle()` whose deadline is 0.5 s. This branch contains **no** change under
+  `Sources/Vorssaint/UI/Switcher/` or `Tests/SwitcherScrollTests.swift`
+  (`git log origin/main..HEAD --` those paths is empty), and a suite-only re-run failed a
+  *different* step of the same family (`previews boundary close/next app`, `0.0...220.0` against
+  `80.5...532.5`) — so it is load-sensitive, not caused by this change. Recorded as a known flake
+  beside `RecorderFastGIFExportTests.swift:27`.
+- Claims, separately: **tests compile and run** (above); **the app compiles** is the same `swiftc`
+  invocation the gate uses for `APP_SOURCES`, not a separate `./build.sh` release compile;
+  **bundle signed and packaged** was measured at `6d9aaeac` and is unchanged by this commit.
+
+### Notary and cask routes are now runnable in one command each
+
+`Tools/notarize.sh` accepts either a stored keychain profile (`NOTARY_PROFILE`, one GUI command to
+create) or the original three API values, and `--preflight` names which route is unusable and exits
+**2** so a release build fails with an actionable message rather than a notary rejection. Verified
+on the Mac: no credentials → `rc=2`; all three values → `rc=0`; a named profile over a non-GUI
+session → `rc=2` with the profile-specific message. `Tools/make-cask.sh` derives version, bundle id,
+`sha256` and the release-asset URL from the staged `.app` and the DMG, so F2 is a command rather
+than a transcription once the notarized DMG exists.
