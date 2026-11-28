@@ -2670,14 +2670,19 @@ enum ClipboardPreviewContract {
                                         onDeferredResults: { refreshedCommandBar = true })
         _ = deepService.filteredEntries(matching: "", surface: islandSurface)
         var deepMatches = deepService.filteredEntries(matching: deepMarker)
-        let deepDeadline = Date().addingTimeInterval(5)
+        // Each poll gets its own budget. One shared absolute deadline meant the
+        // second loop started with whatever the first had not spent — often
+        // nothing — so it failed on a host where the deferred pass was merely
+        // slow. Both loops return as soon as their condition holds.
+        let deepDeadline = Date().addingTimeInterval(30)
         while deepMatches.isEmpty && Date() < deepDeadline {
             RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02))
             deepMatches = deepService.filteredEntries(matching: deepMarker)
         }
         suite.expect(deepMatches.map(\.id) == [documentEntry.id],
                      "the deferred pass appends the deep match once the typing settles")
-        while !refreshedCommandBar && Date() < deepDeadline {
+        let refreshDeadline = Date().addingTimeInterval(30)
+        while !refreshedCommandBar && Date() < refreshDeadline {
             RunLoop.main.run(until: Date().addingTimeInterval(0.01))
         }
         suite.expect(refreshedCommandBar && deepService.filteredEntries(matching: " хвост", surface: .commandBar)

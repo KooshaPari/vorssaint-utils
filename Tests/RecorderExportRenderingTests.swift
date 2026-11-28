@@ -18,7 +18,11 @@ enum RecorderExportRenderingTests {
             }
             done.signal()
         }
-        suite.expect(done.wait(timeout: .now() + 300) == .success,
+        // Still bounded, so a real deadlock fails the suite instead of hanging
+        // the gate, but wide enough that it measures the encode rather than the
+        // other agents' processes: this probe ran past 300 s on a host at load
+        // average 92-139, where the same suite takes 60 s on a quiet one.
+        suite.expect(done.wait(timeout: .now() + 900) == .success,
                      "export regression finishes within its deadline")
     }
 
