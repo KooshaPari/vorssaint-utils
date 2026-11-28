@@ -689,3 +689,33 @@ on the Mac: no credentials → `rc=2`; all three values → `rc=0`; a named prof
 session → `rc=2` with the profile-specific message. `Tools/make-cask.sh` derives version, bundle id,
 `sha256` and the release-asset URL from the staged `.app` and the DMG, so F2 is a command rather
 than a transcription once the notarized DMG exists.
+
+### The switcher flake was a 0.5 s budget, and the second gate run measured the host instead
+
+`Tests/SwitcherScrollTests.swift` asserted that the selected row fits inside the scroller clip
+from inside `settle()`, whose budget was 0.5 s. The loop already returned as soon as its condition
+held, so the budget only mattered when the animation had not finished — and on a loaded machine it
+had not. Fixed at `c6007bc4` (3 s budget, 20 ms runloop slices), verified by two consecutive
+suite-only runs: `switcher: OK (1582 checks, 13.88s)` and `OK (1582 checks, 13.23s)`, after two
+consecutive failures at the old budget.
+
+The next full gate run failed three *different* assertions, none of them this one, and the suite
+durations name the cause:
+
+| suite | `10:22` run | `11:39` run |
+|---|---|---|
+| metrics | 0.24 s | 2.17 s |
+| clipboard | 2.13 s | 9.41 s |
+| recorder | 59.87 s | **412.74 s** (aborted at 1289 of 1353 checks) |
+| switcher | **FAILED** 13.03 s | **OK** 10.28 s |
+
+The second run was 5–9× slower in every suite, because the Mac was carrying a load average of
+**84–139** from other agents' processes (`git grep -n -F -e herdr-revive HEAD` at 258 % CPU,
+`git status --porcelain` at 89 %, `herdr-core exec` against `desk`). The three failures are all
+wall-clock deadlines: `ClipboardFeatureTests.swift:2678,2683` ("once the typing settles") and
+`RecorderExportRenderingTests.swift:21` ("finishes within its deadline"). The switcher suite passed
+*under that load*, which is what the 3 s budget was for.
+
+So: a deadline assertion on this host measures the other agents, not the code. The gate is only
+authoritative on a quiet machine, and a full run must be taken when the load average is low enough
+to be a statement about the tree.
